@@ -59,6 +59,23 @@ static int scoreboard_send(request_rec *r)
                  sizeof(global_score), sizeof(buf), tsize);
 #endif
 
+#if 0
+{
+    int i, j;
+    for (i = 0; i < server_limit; i++) {
+        for (j = 0; j < thread_limit; j++) {
+            worker_score *ws = &ap_scoreboard_image->servers[i][j];
+            if (ws->access_count) {
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(),
+                             "snd %02d-%02d: stat: %c cnt: %d\n", i, j,
+                             status_flags[ws->status],
+                             (int)ws->access_count);
+            }
+        }
+    }
+} 
+#endif 
+    
     ap_set_content_length(r, tsize);
     r->content_type = REMOTE_SCOREBOARD_TYPE;
     

@@ -13,6 +13,10 @@ use Apache::TestRequest ();
 
 use File::Spec::Functions qw(catfile);
 
+# as we can't know ahead how many procs/workers are there, we can't
+# ok each value, in which case we will just look for faults when their
+# occur.
+
 my $cfg = Apache::Test::config();
 my $vars = $cfg->{vars};
 
@@ -144,6 +148,7 @@ sub test2 {
             $next_active_ok = 0 unless worker_score_is_ok($worker_score);
         }
     }
+
     t_debug "parent ok";
     ok $parent_ok;
     t_debug "iterating over all workers";
@@ -166,7 +171,7 @@ sub test2 {
 
     my $up_time = $image->up_time;
     t_debug "up_time: $up_time";
-    ok $up_time;
+    ok $up_time >= 0; # can be 0 if tested too fast
 
     my $worker_score = $image->worker_score(0, 0);
     ok $worker_score;
@@ -229,22 +234,40 @@ sub worker_score_is_ok {
     my $ok = 1;
     for (@worker_score_dual_ctx_props) {
         my $res = $worker_score->$_();
-        $ok = 0 unless defined $res;
+        unless (defined $res) {
+            $ok = 0;
+            warn "$_() failed: undefined\n";
+        }
 
         my @res = $worker_score->$_();
-        $ok = 0 unless @res;
+        unless (@res) {
+            $ok = 0;
+            warn "$_() failed: empty list\n";
+        }
     }
 
     # status: dual var
     {
         my $res = $worker_score->status();
-        $ok = 0 unless $res/1 == $res;
-        $ok = 0 unless $res =~ /^[\w\.]$/;
+        unless ($res/1 == $res) {
+            $ok = 0;
+            my $x = $res + 0;
+            warn "status()-in-numerical-context failed: " .
+                "not integer number: [$x]\n";
+        }
+        unless ($res =~ /^[\w\.]$/) {
+            $ok = 0;
+            warn "status()-in-string-context failed: got [$res]\n";
+            warn "access count: " , $worker_score->access_count(), "\n";
+        }
     }
 
     for (@worker_score_scalar_props) {
         my $res = $worker_score->$_();
-        $ok = 0 unless defined $res;
+        unless (defined $res) {
+            $ok = 0;
+            warn "$_() failed: undefined\n";
+        }
     }
 
     return $ok;

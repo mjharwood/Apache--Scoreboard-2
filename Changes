@@ -1,5 +1,7 @@
 2.06 - dev
 
+fix the buggy reconstruction of the fetched binary image in thaw()
+
 fix start_time(), stop_time() to return usecs as the second argument
 
 Revamping docs (still needs more work) 

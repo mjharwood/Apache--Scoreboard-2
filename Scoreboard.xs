@@ -79,12 +79,12 @@ static char status_flags[SERVER_NUM_STATUS];
 
 /* a worker that have served/serves at least one request and isn't
  * dead yet */
-#define LIVE_WORKER(ws) ws->access_count != 0 ||                \
-    ws->status != SERVER_DEAD
+#define LIVE_WORKER(ws) !(ws->access_count == 0 && ws->status == SERVER_DEAD)
 
 /* a worker that does something at this very moment */
-#define ACTIVE_WORKER(ws) ws->access_count != 0 ||              \
-    (ws->status != SERVER_DEAD && ws->status != SERVER_READY)
+#define ACTIVE_WORKER(ws)                                               \
+    !(ws->access_count == 0 &&                                          \
+      (ws->status == SERVER_DEAD || ws->status == SERVER_READY))
 
 #include "apxs/send.c"
 
@@ -163,6 +163,30 @@ static void image_sanity_check(pTHX)
 #endif
 }
 
+#ifdef DUMMY_SCOREBOARD
+#define MY_WARN fprintf(stderr,
+#else
+#define MY_WARN ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(),
+#endif
+      
+#if 0
+static void debug_dump_sb(modperl_scoreboard_t *image)
+{
+    int i, j;
+
+    for (i = 0; i < image->server_limit; i++) {
+        for (j = 0; j < image->thread_limit; j++) {
+            worker_score *ws = &image->sb->servers[i][j];
+            if (ws->access_count) {
+                MY_WARN
+                    "rcv %02d-%02d: stat: %c cnt: %d\n", i, j,
+                    status_flags[ws->status],
+                    (int)ws->access_count);
+            }
+        }
+    }
+}
+#endif
 
 
 
@@ -268,14 +292,13 @@ thaw(CLASS, pool, packet)
     image->thread_limit = unpack16(ptr);
     ptr += SIZE16;
 
-   /* ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(), */
-   /* fprintf(stderr,
+   /* MY_WARN
       "recv: sizes server_num=%d, thread_num=%d, psize=%d, "
                  "ssize=%d\n",
                  image->server_limit, image->thread_limit, psize, ssize);
    */
 
-    sb = (scoreboard *)apr_pcalloc(pool, sizeof(scoreboard) +
+    sb = (scoreboard *)apr_palloc(pool, sizeof(scoreboard) +
                                    image->server_limit * sizeof(worker_score *));
     sb->parent  = (process_score *)Copy_pool(pool, ptr, psize, char);
     ptr += psize;
@@ -283,7 +306,7 @@ thaw(CLASS, pool, packet)
     sb->servers = (worker_score **)((char*)sb + sizeof(scoreboard));
     for (i = 0; i < image->server_limit; i++) {
         sb->servers[i] = (worker_score *)Copy_pool(pool, ptr,
-                                                   sizeof(worker_score), char);
+                                                   image->thread_limit * sizeof(worker_score), char);
         ptr += image->thread_limit * sizeof(worker_score);
     }
 
@@ -292,6 +315,8 @@ thaw(CLASS, pool, packet)
 
     image->pool = pool;
     image->sb   = sb;
+
+   /* debug_dump_sb(image); */
 
     RETVAL = image;
 
