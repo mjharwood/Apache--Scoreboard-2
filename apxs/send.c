@@ -31,24 +31,16 @@ static unsigned short unpack16(unsigned char *s)
 
 static int scoreboard_send(request_rec *r)
 {
-    int server_num, psize, ssize, tsize;
+    int psize, ssize, tsize;
     char buf[SIZE16*4];
     char *ptr = buf;
     int server_limit, thread_limit;
 
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
-    
-    for (server_num = 0; server_num < server_limit; server_num++) {
-        if (!ap_scoreboard_image->parent[server_num].pid) {
-            break;
-        }
-    }
 
-    server_num = server_limit;
-    
-    psize = sizeof(process_score) * server_num;
-    ssize = sizeof(worker_score)  * server_num * thread_limit;
+    psize = sizeof(process_score) * server_limit;
+    ssize = sizeof(worker_score)  * server_limit * thread_limit;
     tsize = psize + ssize + sizeof(global_score) + sizeof(buf);
 
     pack16(ptr, psize);
@@ -61,12 +53,12 @@ static int scoreboard_send(request_rec *r)
 
 #if 0
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(),
-                 "send: sizes server_num=%d, thread_num=%d, psize=%d, "
+                 "send: sizes server_limit=%d, thread_num=%d, psize=%d, "
                  "ssize=%d, %d, %d, %d\n",
-                 server_num, thread_limit, psize, ssize,
+                 server_limit, thread_limit, psize, ssize,
                  sizeof(global_score), sizeof(buf), tsize);
 #endif
-    
+
     ap_set_content_length(r, tsize);
     r->content_type = REMOTE_SCOREBOARD_TYPE;
     
@@ -74,7 +66,7 @@ static int scoreboard_send(request_rec *r)
         WRITE_BUFF(&buf[0],                         sizeof(buf),          r);
         WRITE_BUFF(&ap_scoreboard_image->parent[0], psize,                r);
         WRITE_BUFF(ap_scoreboard_image->servers[0], ssize,                r);
-        WRITE_BUFF(&ap_scoreboard_image->global,    sizeof(global_score), r);
+        WRITE_BUFF(ap_scoreboard_image->global,     sizeof(global_score), r);
     }
 
     return APR_SUCCESS;

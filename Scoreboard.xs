@@ -47,8 +47,8 @@ typedef modperl_parent_score_t *Apache__ScoreboardParentScore;
 
 static char status_flags[SERVER_NUM_STATUS];
 
-#define server_limit(image) image->server_limit
-#define thread_limit(image) image->thread_limit
+#define server_limit(image) image->sb->global->server_limit
+#define thread_limit(image) image->sb->global->thread_limit
     
 #define scoreboard_up_time(image)                               \
     (apr_uint32_t) apr_time_sec(                                \
@@ -195,7 +195,7 @@ freeze(image)
     Apache::Scoreboard image
 
     PREINIT:
-    int server_num, psize, ssize, tsize;
+    int psize, ssize, tsize;
     char buf[SIZE16*4];
     char *dptr, *data, *ptr = buf;
     scoreboard *sb;
@@ -203,20 +203,12 @@ freeze(image)
     CODE:
     sb = image->sb;
     
-    for (server_num = 0; server_num < image->server_limit; server_num++) {
-        if (!sb->parent[server_num].pid) {
-            break;
-        }
-    }
-
-    //server_num = image->server_limit;
-
-    psize = sizeof(process_score) * server_num;
-    ssize = sizeof(worker_score)  * server_num * image->thread_limit;
+    psize = sizeof(process_score) * image->server_limit;
+    ssize = sizeof(worker_score)  * image->server_limit * image->thread_limit;
     tsize = psize + ssize + sizeof(global_score) + sizeof(buf);
-    /* fprintf(stderr, "sizes %d, %d, %d, %d, %d, %d\n",
-       server_num, psize, ssize, sizeof(global_score) , sizeof(buf), tsize); */
-
+    /* fprintf(stderr, "sizes %d, %d, %d, %d, %d\n",
+       psize, ssize, sizeof(global_score) , sizeof(buf), tsize); */
+                 
     data = (char *)apr_palloc(image->pool, tsize);
     
     pack16(ptr, psize);
@@ -232,13 +224,13 @@ freeze(image)
 
     /* fill the data buffer with the data we want to freeze */
     dptr = data;
-    Move(buf,             dptr, sizeof(buf),          char);
+    Move(&buf[0],        dptr, sizeof(buf),          char);
     dptr += sizeof(buf);
-    Move(&sb->parent[0],  dptr, psize,                char);
+    Move(&sb->parent[0], dptr, psize,                char);
     dptr += psize;
-    Move(&sb->servers[0], dptr, ssize,                char);
+    Move(sb->servers[0], dptr, ssize,                char);
     dptr += ssize;
-    Move(&sb->global,     dptr, sizeof(global_score), char);
+    Move(&sb->global,    dptr, sizeof(global_score), char);
 
     /* an equivalent C function can return 'data', in case of XS it'll
      * try to convert char *data to PV, using strlen(), which will
@@ -293,13 +285,16 @@ thaw(CLASS, pool, packet)
                                    image->server_limit * sizeof(worker_score *));
     sb->parent  = (process_score *)Copy_pool(pool, ptr, psize, char);
     ptr += psize;
+
     sb->servers = (worker_score **)((char*)sb + sizeof(scoreboard));
     for (i = 0; i < image->server_limit; i++) {
-        sb->servers[i] = (worker_score *)Copy_pool(pool, ptr, sizeof(worker_score), char);
+        sb->servers[i] = (worker_score *)Copy_pool(pool, ptr,
+                                                   sizeof(worker_score), char);
         ptr += image->thread_limit * sizeof(worker_score);
     }
 
-    sb->global  = (global_score *)ptr;
+    sb->global  = (global_score *)Copy_pool(pool, ptr,
+                                            sizeof(global_score), char);
 
     image->pool = pool;
     image->sb   = sb;
