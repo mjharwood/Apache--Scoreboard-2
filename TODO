@@ -4,10 +4,6 @@ scripts under examples/ need to be updated to 2.0
 
 ---
 
-apxs/mod_scoreboard_send.c needs to be ported to Apache 2.0
-
----
-
 lib/Apache/ScoreboardGraph.pm needs to be ported
 
 ---

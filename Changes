@@ -1,4 +1,6 @@
-2.05 -
+2.05 - 
+
+apxs/mod_scoreboard_send.c has been ported to Apache 2.0
 
 Apache::DummyScoreboard was ported to mp2 (this is used to process a
 scoreboard outside running Apache).
