@@ -1,6 +1,6 @@
 package Apache::Scoreboard;
 
-our $VERSION = '2.0';
+$Apache::Scoreboard::VERSION = '2.0';
 
 use strict;
 use warnings FATAL => 'all';
@@ -12,8 +12,13 @@ BEGIN {
             unless $mod_perl::VERSION > 1.98;
 }
 
-use XSLoader;
-XSLoader::load __PACKAGE__, $VERSION;
+# so that it can be loaded w/o mod_perl (.e.g MakeMaker requires this
+# file when Apache::Scoreboard is some other module's PREREQ_PM)
+if ($ENV{MOD_PERL}) {
+    require XSLoader;
+    XSLoader::load(__PACKAGE__, $Apache::Scoreboard::VERSION);
+}
+
 
 use constant DEBUG => 0;
 
