@@ -47,8 +47,8 @@ typedef modperl_parent_score_t *Apache__ScoreboardParentScore;
 
 static char status_flags[SERVER_NUM_STATUS];
 
-#define server_limit(image) image->sb->global->server_limit
-#define thread_limit(image) image->sb->global->thread_limit
+#define server_limit(image) image->server_limit
+#define thread_limit(image) image->thread_limit
     
 #define scoreboard_up_time(image)                               \
     (apr_uint32_t) apr_time_sec(                                \
