@@ -12,6 +12,14 @@ PerlModule Apache::Scoreboard
     PerlResponseHandler Apache::Scoreboard::send
 </Location>
 
+# XXX: one day will add this to the test suite (need to automate the C
+# module build first though, see Apache-Test's c-modules for know-how)
+# LoadModule scoreboard_send_module @ServerRoot@/../apxs/.libs/mod_scoreboard_send.so
+#<Location /scoreboard2>
+     SetHandler scoreboard-send-handler
+#</Location>
+
+
 ## Configuration in httpd.conf
 #PerlModule Apache::VMonitor
 #<Location /system/vmonitor>
