@@ -218,9 +218,11 @@ sub image_is_ok {
     return $status;
 }
 
-my @methods = qw(status access_count request client
-                 bytes_served conn_bytes conn_count times start_time
-                 stop_time req_time);
+my @methods = qw(access_count bytes_served
+                 client conn_bytes conn_count most_recent
+                 my_access_count my_bytes_served request req_time
+                 start_time status stop_time thread_num tid times
+                );
 
 # vhost is not available outside mod_perl, since it requires a call to
 # an Apache method
