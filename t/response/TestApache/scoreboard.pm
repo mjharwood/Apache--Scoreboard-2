@@ -6,6 +6,7 @@ use warnings FATAL => 'all';
 use Apache::Test;
 use Apache::TestUtil;
 use Apache::TestTrace;
+use Apache::TestRequest ();
 
 use Apache::Response ();
 use Apache::RequestRec;
@@ -24,7 +25,6 @@ my @worker_score_scalar_props = qw(
 my @worker_score_dual_props = qw(
     times start_time stop_time
 );
-
 
 my $cfg = Apache::Test::config();
 my $vars = $cfg->{vars};
@@ -54,7 +54,7 @@ sub handler {
 
     # get the image internally
     my $image = Apache::Scoreboard->image($r->pool);
-    ok $image && ref $image;
+    ok image_is_ok($image);
 
     # now fetch the image via lwp and run a few basic tests
     # need to have two availble workers, otherwise it'll hang
@@ -179,16 +179,24 @@ sub handler {
     Apache::OK;
 }
 
-# try to access various underlaying datastructures to test that the
+# try to access various underlying datastructures to test that the
 # image is valid
 sub image_is_ok {
     my ($image) = shift;
-    return $image &&
-           ref $image &&
-           $image->pids &&
-           $image->worker_score(0, 0)->status &&
-           $image->parent_score &&
-           $image->parent_score->worker_score->vhost;
+    my $status = 1;
+    $status = 0 unless $image && 
+        ref($image) eq 'Apache::Scoreboard' &&
+        $image->pids &&
+        $image->worker_score(0, 0)->status &&
+        $image->parent_score &&
+        $image->parent_score->worker_score->vhost;
+
+    # check that we don't segfault here
+    #for (my $proc = $image->parent; $proc; $proc = $proc->next) {
+    #    my $pid = $proc->pid;
+    #}
+
+    return $status;
 }
 
 # check that all worker_score props return something
