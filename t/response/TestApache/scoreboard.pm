@@ -16,8 +16,8 @@ use Apache::Const -compile => 'OK';
 
 my @worker_score_scalar_props = qw(
     thread_num tid req_time most_recent status access_count
-    bytes_served client my_access_count my_bytes_served conn_bytes
-    conn_count client request vhost
+    bytes_served my_access_count my_bytes_served conn_bytes conn_count
+    client request vhost
 );
 
 my @worker_score_dual_props = qw(
@@ -41,6 +41,8 @@ sub handler {
     plan $r, todo => [], tests => $ntests, ['status'];
 
     ### constants ###
+
+    warn "PID: ", $$, "ppid:", getppid(), "\n";
 
     t_debug("constants");
     ok Apache::Const::SERVER_LIMIT;

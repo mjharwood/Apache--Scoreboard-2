@@ -5,11 +5,12 @@ our $VERSION = '2.0';
 use strict;
 use warnings FATAL => 'all';
 
-use Apache2;
-use mod_perl;
-die "This module was built against mod_perl 2.0 ",
-    "and can't be used with $mod_perl::VERSION, "
-    unless $mod_perl::VERSION > 1.98;
+BEGIN {
+    require mod_perl;
+    die "This module was built against mod_perl 2.0 ",
+        "and can't be used with $mod_perl::VERSION, "
+            unless $mod_perl::VERSION > 1.98;
+}
 
 use XSLoader;
 XSLoader::load __PACKAGE__, $VERSION;
