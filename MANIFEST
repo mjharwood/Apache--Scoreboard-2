@@ -17,7 +17,6 @@ MANIFEST			This list of files
 README
 Scoreboard.xs
 t/apache/scoreboard.t
-t/conf/.cvsignore
 t/conf/extra.conf.in
 t/conf/modperl_extra.pl
 t/response/TestApache/scoreboard.pm
