@@ -31,6 +31,8 @@ my $ua;
 sub http_fetch {
     my($self, $url) = @_;
 
+    Carp::croak("no url argument was passed") unless $url;
+
     require LWP::UserAgent;
     unless ($ua) {
 	no strict 'vars';
