@@ -79,10 +79,10 @@ sub test1 {
 
     # testing freeze+thaw / store+retrieve the scoreboard image
     {
-        t_debug "image freeze/thaw";
         my $image = Apache::Scoreboard->fetch($pool, $retrieve_url);
         ok image_is_ok($image);
 
+        t_debug "image freeze/thaw";
         my $frozen_image = $image->freeze;
         my $thawed_image = Apache::Scoreboard->thaw($pool, $frozen_image);
         ok image_is_ok($thawed_image);
