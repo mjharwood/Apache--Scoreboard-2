@@ -108,28 +108,26 @@ Apache::Scoreboard - Perl interface to the Apache scoreboard structure
 =head1 DESCRIPTION
 
 Apache keeps track of server activity in a structure known as the
-I<scoreboard>.  There is a I<slot> in the scoreboard for each child
-server, containing information such as status, access count, bytes
-served and cpu time.  This same information is used by I<mod_status>
-to provide current server statistics in a human readable form.
+C<scoreboard>.  There is a I<slot> in the scoreboard for each child
+server and its workers (be it threads or processes), containing
+information such as status, access count, bytes served and cpu time,
+and much more.  This same information is used by C<mod_status> to
+provide current server statistics in a human readable
+form. C<Apache::Scoreboard> provides the Perl API to access the
+scoreboard. C<Apache::VMonitor> is an extended equivalent of
+C<mod_status> written in Perl.
 
 
 
 
-=head1 General Methods
+=head1 The C<Apache::Scoreboard> Methods
 
 
-=head2 C<image>
-
-This method returns an object for accessing the scoreboard structure
-when running inside the server:
-
-  my $image = Apache::Scoreboard->image;
 
 =head2 C<fetch>
 
-This method fetches the scoreboard structure from a remote server,
-which must contain the following configuration:
+This method fetches the C<Apache::Scoreboard> object from a remote
+server, which must contain the following configuration:
 
   PerlModule Apache::Scoreboard
   <Location /scoreboard>
@@ -141,8 +139,10 @@ which must contain the following configuration:
      allow from 127.0.0.1 ...
   </Location>
 
-If the remote server is not configured to use mod_perl or simply for a 
-smaller footprint, see the I<apxs> directory for I<mod_scoreboard_send>:
+If the remote server is not configured to use mod_perl or simply for a
+smaller footprint, see the I<apxs> directory for the C module
+I<mod_scoreboard_send>, which once built (like any other Apache
+module) can be configured as following:
 
   LoadModule scoreboard_send_module libexec/mod_scoreboard_send.so
   
@@ -157,9 +157,89 @@ The image can then be fetched via http:
 
   my $image = Apache::Scoreboard->fetch("http://remote-hostname/scoreboard");
 
+Note that if the the code processing the scoreboard running under the
+same server, you should be using the C<L<image()|/image>> method,
+which retrieves the scoreboard directly from the server memory.
+
+
+
 =head2 C<fetch_store>
 
-see C<L<retrieve()|/C_retrieve_>>
+  Apache::Scoreboard->fetch_store($retrieve_url, $local_filename);
+
+Fetches a remote scoreboard and stores it in the file.
+
+see C<L<retrieve()|/retrieve>> and C<L<store()|/store>>.
+
+
+
+
+=head2 C<freeze>
+
+  my $image = Apache::Scoreboard->fetch($pool, $retrieve_url);
+
+Freeze the image so it can be later restored and used. The frozen
+image for example can be stored on the filesystem and then read in:
+
+  my $image = Apache::Scoreboard->fetch($pool, $retrieve_url);
+  my $frozen_image = $image->freeze;
+  Apache::Scoreboard->store($frozen_image, $store_file);
+
+See C<L<store()|/store>>.
+
+
+
+
+
+=head2 C<image>
+
+This method returns an object for accessing the scoreboard structure
+when running inside the server:
+
+  my $image = Apache::Scoreboard->image;
+
+If you want to fetch a scoreboard from a different server, or if the
+code runs outside the mod_perl server use the C<L<fetch()|/fetch>> or
+the C<L<fetch_store()|/fetch_store>> methods.
+
+
+
+
+
+=head2 C<parent_score>
+
+This method returns a object of the first parent score entry in the
+list, blessed into the
+C<L<Apache::ScoreboardParentScore|/The_Apache::ScoreboardParentScore_Methods>>
+class:
+
+  my $parent_score = $image->parent_score;
+
+Iterating over the list of scoreboard slots is done like so:
+
+  for (my $parent_score = $image->parent_score;
+       $parent_score;
+       $parent_score = $parent_score->next) {
+      my $pid = $parent_score->pid; # pid of the child
+
+      # Apache::ScoreboardWorkerScore object
+      my $wscore = $parent_score->worker_score;
+      ...
+  }
+
+
+
+
+=head2 C<pids>
+
+Returns an reference to an array containing all child pids:
+
+  my $pids = $image->pids;
+
+META: check whether we get them all (if there is a hole due to a proc
+in the middle of the list that was killed)
+
+
 
 =head2 C<retrieve>
 
@@ -169,33 +249,21 @@ other processes with the I<retrieve> function.  This way, multiple
 processes can access a remote scoreboard with just a single request to
 the remote server.  Example:
 
-  Apache::Scoreboard->fetch_store($url, $local_filename);
+  Apache::Scoreboard->fetch_store($retrieve_url, $local_filename);
   
   my $image = Apache::Scoreboard->retrieve($local_filename);
 
-=head2 C<parent_score>
 
-This method returns a reference to the first parent score entry in the 
-list, blessed into the I<Apache::ParentScore> class:
 
-  my $parent_score = $image->parent_score;
 
-Iterating over the list of scoreboard slots is done like so:
+=head2 C<send>
 
-  for (my $parent_score = $image->parent_score;
-       $parent_score;
-       $parent_score = $parent_score->next) {
-      my $pid = $parent_score->pid; #pid of the child
+  Apache::Scoreboard::send();
 
-      my $server = $parent_score->server; #Apache::ServerScore object
-      ...
-  }
+a response handler which sends the scoreboard image. See
+C<L<fetch()|/fetch>> for details.
 
-=head2 C<pids>
 
-Returns an array reference of all child pids:
-
-  my $pids = $image->pids;
 
 
 =head2 C<server_limit>
@@ -206,6 +274,26 @@ Returns a server limit for the given image.
 
 use this instead of the deprecated C<Apache::Const::SERVER_LIMIT>
 constant.
+
+
+
+
+=head2 C<store>
+
+  Apache::Scoreboard->store($frozen_image, $store_file);
+
+stores a C<L<frozen|/freeze>> image on the filesystem.
+
+
+
+=head2 C<thaw>
+
+  my $thawed_image = Apache::Scoreboard->thaw($pool, $frozen_image);
+
+thaws a C<L<frozen|/freeze>> image, turning it into the
+C<L<Apache::Scoreboard|/The_Apache::Scoreboard_Methods>> object.
+
+
 
 
 =head2 C<thread_limit>
@@ -225,9 +313,11 @@ constant.
 
 
 
-=head1 The C<Apache::ParentScore> Class
 
-To get the C<Apache::ParentScore> object use the
+
+=head1 The C<Apache::ScoreboardParentScore> Class
+
+To get the C<Apache::ScoreboardParentScore> object use the
 C<L<$image->parent_score()|/C_parent_score_>> or
 C<L<$parent_score->next()|/C_next_>> methods.
 
@@ -239,14 +329,16 @@ The parent keeps track of child pids with this field:
 
 =head2 C<server>
 
-Returns a reference to the corresponding I<Apache::ServerScore>
-structure:
+Returns an
+C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
+object:
 
   my $server = $parent->server;
 
 =head2 C<next>
 
-Returns a reference to the next I<Apache::ParentScore> object in the list:
+Returns a reference to the next I<Apache::ScoreboardParentScore>
+object in the list:
 
   my $p = $parent->next;
 
@@ -256,9 +348,9 @@ Returns a reference to the next I<Apache::ParentScore> object in the list:
 
 
 
-=head1 The C<Apache::ServerScore> Class
+=head1 The C<Apache::ScoreboardWorkerScore> Methods
 
-To get the C<Apache::ServerScore> object use the
+To get the C<Apache::ScoreboardWorkerScore> object use the
 C<L<$$parent->server()|/C_server_>> method.
 
 =head2 C<status>
