@@ -1,20 +1,24 @@
-package TestApache::scoreboard;
+package MyTest::Common;
 
 use strict;
 use warnings FATAL => 'all';
+
+use Apache::Scoreboard ();
+use APR::Pool ();
 
 use Apache::Test;
 use Apache::TestUtil;
 use Apache::TestTrace;
 use Apache::TestRequest ();
 
-use Apache::Response ();
-use Apache::RequestRec;
-use Apache::Scoreboard;
-
 use File::Spec::Functions qw(catfile);
 
-use Apache::Const -compile => 'OK';
+my $cfg = Apache::Test::config();
+my $vars = $cfg->{vars};
+
+my $store_file = catfile $vars->{documentroot}, "scoreboard";
+my $hostport = Apache::TestRequest::hostport($cfg);
+my $retrieve_url = "http://$hostport/scoreboard";
 
 my @worker_score_scalar_props = qw(
     thread_num tid req_time most_recent status access_count
@@ -26,47 +30,50 @@ my @worker_score_dual_props = qw(
     times start_time stop_time
 );
 
-my $cfg = Apache::Test::config();
-my $vars = $cfg->{vars};
+sub retrieve_url { return $retrieve_url }
 
-my $store_file = catfile $vars->{documentroot}, "scoreboard";
-my $hostport = Apache::TestRequest::hostport($cfg);
-my $retrieve_url = "http://$hostport/scoreboard";
-
-sub handler {
-    my $r = shift;
-
+sub num_of_tests {
     my $ntests = 15 + @worker_score_scalar_props + @worker_score_dual_props * 2;
-    $ntests += 2 if $vars->{maxclients} > 1;
+    $ntests += 2 if $ENV{MOD_PERL}; # deprecated constants
+    return $ntests;
+}
 
-    plan $r, todo => [], tests => $ntests, ['status'];
+sub test1 {
 
-    ### constants ###
+    my $pool = APR::Pool->new;
 
     debug "PID: ", $$, " ppid:", getppid(), "\n";
 
-    t_debug("constants");
-    ok Apache::Const::SERVER_LIMIT;
-    ok Apache::Const::THREAD_LIMIT;
-    ok Apache::Scoreboard::REMOTE_SCOREBOARD_TYPE;
+    ### constants ###
+    {
+        t_debug "constants";
+        # deprecated and available only under mod_perl
+        if ($ENV{MOD_PERL}) {
+            ok Apache::Const::SERVER_LIMIT;
+            ok Apache::Const::THREAD_LIMIT;
+        }
+
+        ok Apache::Scoreboard::REMOTE_SCOREBOARD_TYPE;
+    }
 
     ### the scoreboard image fetching methods ###
 
-    # get the image internally
-    my $image = Apache::Scoreboard->image($r->pool);
-    ok image_is_ok($image);
-
-    # now fetch the image via lwp and run a few basic tests
-    # need to have two availble workers, otherwise it'll hang
+    # need to have two available workers, otherwise it'll hang
     # run the test with: -maxclients 2
-    if ($vars->{maxclients} > 1) {
+    if ($ENV{MOD_PERL} && $vars->{maxclients} < 2) {
+        die "maxclients needs to be 2 or higher";
+    }
+
+    my $image;
+    # fetch the image via lwp and run a few basic tests
+    {
         t_debug("fetching: $retrieve_url");
-        my $image = Apache::Scoreboard->fetch($r->pool, $retrieve_url);
+        $image = Apache::Scoreboard->fetch($pool, $retrieve_url);
         ok image_is_ok($image);
 
         t_debug("fetch_store/retrieve ($store_file)");
         Apache::Scoreboard->fetch_store($retrieve_url, $store_file);
-        $image = Apache::Scoreboard->retrieve($r->pool, $store_file);
+        $image = Apache::Scoreboard->retrieve($pool, $store_file);
         ok image_is_ok($image);
     }
 
@@ -74,16 +81,21 @@ sub handler {
     {
         t_debug "image freeze/thaw";
         my $frozen_image = $image->freeze;
-        my $thawed_image =  Apache::Scoreboard->thaw($r->pool, $frozen_image);
+        my $thawed_image = Apache::Scoreboard->thaw($pool, $frozen_image);
         ok image_is_ok($thawed_image);
 
         t_debug("image store/retrieve ($store_file)");
         Apache::Scoreboard->store($frozen_image, $store_file);
-        my $image = Apache::Scoreboard->retrieve($r->pool, $store_file);
+        my $image = Apache::Scoreboard->retrieve($pool, $store_file);
         ok image_is_ok($image);
     }
+}
 
+sub test2 {
+    my $image = shift;
     ### parents/workers iteration functions ###
+
+    ok image_is_ok($image);
 
     t_debug "iterating over procs/workers";
     my $parent_ok      = 1;
@@ -151,7 +163,10 @@ sub handler {
     my $worker_score = $image->worker_score(0, 0);
     ok $worker_score;
 
-    my $self_parent_idx = $image->parent_idx_by_pid($$);
+    my $pid = $pids[0];
+
+    my $self_parent_idx = $image->parent_idx_by_pid($pid);
+    t_debug "pid: $$, self_parent_idx: $self_parent_idx";
     my $self_parent_score = $image->parent_score($self_parent_idx);
     t_debug "parent_idx_by_pid";
     ok parent_score_is_ok($self_parent_score);
@@ -176,7 +191,31 @@ sub handler {
         ok defined $res;
     }
 
-    Apache::OK;
+}
+
+my @methods = qw(status access_count request client
+                 bytes_served conn_bytes conn_count times start_time
+                 stop_time req_time);
+
+# vhost is not available outside mod_perl, since it requires a call to
+# an Apache method
+push @methods, "vhost" if $ENV{MOD_PERL};
+
+sub score_is_ok {
+    my $parent = shift;
+
+    my $ok = 1;
+    $ok = 0 unless $parent->pid;
+
+    my $server = $parent->server; # Apache::ServerScore object
+    for (@methods) {
+        no strict 'refs';
+        my $val = $server->$_;
+        #error "$_ [$val]";
+        $ok = 0 unless defined $val;
+    }
+
+    return $ok;
 }
 
 # try to access various underlying datastructures to test that the
@@ -189,7 +228,9 @@ sub image_is_ok {
         $image->pids &&
         $image->worker_score(0, 0)->status &&
         $image->parent_score &&
-        $image->parent_score->worker_score->vhost;
+        $image->parent_score->worker_score->vhost &&
+        $image->server_limit && 
+        $image->thread_limit;
 
     # check that we don't segfault here
     #for (my $proc = $image->parent; $proc; $proc = $proc->next) {

@@ -3,8 +3,7 @@ apxs/send.c
 Changes
 Dummy/dummy.c
 Dummy/DummyScoreboard.pm
-Dummy/DummyScoreboard.xs
-Dummy/Makefile.PL.orig
+Dummy/Makefile.PL
 Dummy/typemap
 examples/scoreboard-access-png.pl
 examples/scoreboard-cpu-png.pl

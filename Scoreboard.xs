@@ -18,6 +18,8 @@
 typedef struct {
     scoreboard *sb;
     apr_pool_t *pool;
+    int server_limit;
+    int thread_limit;
 } modperl_scoreboard_t;
 
 typedef struct {
@@ -26,31 +28,35 @@ typedef struct {
     int worker_idx;
 } modperl_worker_score_t;
 
+/* XXX: notice that here we reference a struct living in a different
+ * perl object ($image), so if that object is destroyed earlier we get
+ * a segfault. a possible solution: inline modperl_scoreboard_t in
+ * modperl_parent_score_t (can't create a dependency inside $image,
+ * since there can be many objects referencing it, will require a
+ * complicated real ref counting)
+ */
 typedef struct {
     process_score *record;
     int idx;
-    scoreboard *sb;
-    apr_pool_t *pool;
+    modperl_scoreboard_t *image;
 } modperl_parent_score_t;
 
 typedef modperl_scoreboard_t   *Apache__Scoreboard;
 typedef modperl_worker_score_t *Apache__ScoreboardWorkerScore;
 typedef modperl_parent_score_t *Apache__ScoreboardParentScore;
 
-/* XXX: When documenting don't forget to add the new 'vhost' accessor */
-/* and port accessor if it gets added (need to add it here too) */
-
-int server_limit, thread_limit;
-
 static char status_flags[SERVER_NUM_STATUS];
 
-#define scoreboard_up_time(image) \
-    (apr_uint32_t) apr_time_sec( \
+#define server_limit(image) image->server_limit
+#define thread_limit(image) image->thread_limit
+    
+#define scoreboard_up_time(image)                               \
+    (apr_uint32_t) apr_time_sec(                                \
         apr_time_now() - image->sb->global->restart_time);
 
 #define parent_score_pid(mps)  mps->record->pid
 
-#define worker_score_most_recent(mws) \
+#define worker_score_most_recent(mws)                                   \
     (apr_uint32_t) apr_time_sec(apr_time_now() - mws->record->last_used);
 
 /* XXX: as of 20031219, tid is not maintained in scoreboard */
@@ -73,16 +79,14 @@ static char status_flags[SERVER_NUM_STATUS];
 
 /* a worker that have served/serves at least one request and isn't
  * dead yet */
-#define LIVE_WORKER(ws) ws->access_count != 0 || \
+#define LIVE_WORKER(ws) ws->access_count != 0 ||                \
     ws->status != SERVER_DEAD
 
 /* a worker that does something at this very moment */
-#define ACTIVE_WORKER(ws) ws->access_count != 0 || \
+#define ACTIVE_WORKER(ws) ws->access_count != 0 ||              \
     (ws->status != SERVER_DEAD && ws->status != SERVER_READY)
 
-
-
-
+#include "apxs/send.c"
 
 static void status_flags_init(void)
 {
@@ -99,23 +103,23 @@ static void status_flags_init(void)
     status_flags[SERVER_IDLE_KILL]      = 'I';
 }
 
-#include "apxs/send.c"
-
-MODULE = Apache::Scoreboard   PACKAGE = Apache::Scoreboard   PREFIX = scoreboard_
-
-BOOT:
+static void constants_init(pTHX)
 {
-    HV *stash;
+      HV *stash;
+      int server_limit, thread_limit;
 
-    /* XXX: this must be performed only once and before other threads are spawned.
-     * but not sure. could be that need to use local storage.
-     *
-     */
-    status_flags_init();
-    
-    ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+      /* SERVER_LIMIT and THREAD_LIMIT constants are deprecated, use
+       * $image->server_limit and $image->thread_limit instead */
+#ifndef DUMMY_SCOREBOARD
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
-
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+#else
+    /* XXX: how can we figure out that data w/o having an access to
+     * ap_mpm_query? */
+    server_limit = 0;
+    thread_limit = 0;
+#endif
+    
     stash = gv_stashpv("Apache::Const", TRUE);
     newCONSTSUB(stash, "SERVER_LIMIT", newSViv(server_limit));
     
@@ -125,6 +129,57 @@ BOOT:
     stash = gv_stashpv("Apache::Scoreboard", TRUE);
     newCONSTSUB(stash, "REMOTE_SCOREBOARD_TYPE",
                 newSVpv(REMOTE_SCOREBOARD_TYPE, 0));
+
+}
+
+static worker_score *my_get_scoreboard_worker(pTHX_
+                                              modperl_scoreboard_t *image,
+                                              int x, int y)
+{
+    if (((x < 0) || (image->server_limit < x)) ||
+        ((y < 0) || (image->thread_limit < y))) {
+        Perl_croak(aTHX_ "worker score [%d][%d] is out of limit", x, y);
+    }
+    return &image->sb->servers[x][y];
+}
+
+static process_score *my_get_scoreboard_process(pTHX_
+                                                modperl_scoreboard_t *image,
+                                                int x)
+{
+    if ((x < 0) || (image->server_limit < x)) {
+        Perl_croak(aTHX_ "parent score [%d] is out of limit", x);
+    }
+    return &image->sb->parent[x];
+}
+
+static void image_sanity_check(pTHX)
+{
+#ifdef DUMMY_SCOREBOARD
+    Perl_croak(aTHX_ "Don't call the image() method when not"
+               "running under mod_perl");
+#endif
+}
+
+
+
+
+
+
+
+
+MODULE = Apache::Scoreboard   PACKAGE = Apache::Scoreboard   PREFIX = scoreboard_
+
+BOOT:
+{
+
+    /* XXX: this must be performed only once and before other threads are spawned.
+     * but not sure. could be that need to use local storage.
+     *
+     */
+    status_flags_init();
+    
+    constants_init(aTHX);
 }
 
 int
@@ -138,32 +193,41 @@ freeze(image)
     Apache::Scoreboard image
 
     PREINIT:
-    int i, psize, ssize, tsize;
-    char buf[SIZE16*2];
+    int server_num, psize, ssize, tsize;
+    char buf[SIZE16*4];
     char *dptr, *data, *ptr = buf;
     scoreboard *sb;
 
     CODE:
     sb = image->sb;
     
-    for (i = 0; i < server_limit; i++) {
-        if (!sb->parent[i].pid) {
+    for (server_num = 0; server_num < image->server_limit; server_num++) {
+        if (!sb->parent[server_num].pid) {
             break;
         }
     }
-    
-    psize = i * sizeof(process_score);
-    ssize = i * sizeof(worker_score);
+
+    //server_num = image->server_limit;
+
+    psize = sizeof(process_score) * server_num;
+    ssize = sizeof(worker_score)  * server_num * image->thread_limit;
     tsize = psize + ssize + sizeof(global_score) + sizeof(buf);
     /* fprintf(stderr, "sizes %d, %d, %d, %d, %d, %d\n",
-       i, psize, ssize, sizeof(global_score) , sizeof(buf), tsize); */
+       server_num, psize, ssize, sizeof(global_score) , sizeof(buf), tsize); */
 
     data = (char *)apr_palloc(image->pool, tsize);
     
     pack16(ptr, psize);
     ptr += SIZE16;
     pack16(ptr, ssize);
-    
+    ptr += SIZE16;
+    pack16(ptr, image->server_limit);
+    ptr += SIZE16;
+    pack16(ptr, image->thread_limit);
+
+    /* XXX: sync with send(), since the data frozen by this
+     * method won't work outside the same Apache */
+
     /* fill the data buffer with the data we want to freeze */
     dptr = data;
     Move(buf,             dptr, sizeof(buf),          char);
@@ -195,7 +259,8 @@ thaw(CLASS, pool, packet)
     scoreboard *sb;
     int psize, ssize;
     char *ptr;
-
+    int i;
+    
     CODE:
     if (!(SvOK(packet) && SvCUR(packet) > (SIZE16*2))) {
 	XSRETURN_UNDEF;
@@ -204,19 +269,35 @@ thaw(CLASS, pool, packet)
     CLASS = CLASS; /* avoid warnings */
  
     image = (modperl_scoreboard_t *)apr_pcalloc(pool, sizeof(*image));
-    sb    =           (scoreboard *)apr_pcalloc(pool, sizeof(scoreboard));
 
     ptr = SvPVX(packet);
     psize = unpack16(ptr);
     ptr += SIZE16;
     ssize = unpack16(ptr);
     ptr += SIZE16;
+    image->server_limit = unpack16(ptr);
+    ptr += SIZE16;
+    image->thread_limit = unpack16(ptr);
+    ptr += SIZE16;
 
+   /* ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(), */
+   /* fprintf(stderr,
+      "recv: sizes server_num=%d, thread_num=%d, psize=%d, "
+                 "ssize=%d\n",
+                 image->server_limit, image->thread_limit, psize, ssize);
+   */
+
+    sb = (scoreboard *)apr_pcalloc(pool, sizeof(scoreboard) +
+                                   image->server_limit * sizeof(worker_score *));
     sb->parent  = (process_score *)Copy_pool(pool, ptr, psize, char);
     ptr += psize;
-    sb->servers = (worker_score **)Copy_pool(pool, ptr, ssize, char);
-    ptr += ssize;
-    sb->global  = (global_score *) Copy_pool(pool, ptr, sizeof(global_score), char);
+    sb->servers = (worker_score **)((char*)sb + sizeof(scoreboard));
+    for (i = 0; i < image->server_limit; i++) {
+        sb->servers[i] = (worker_score *)Copy_pool(pool, ptr, sizeof(worker_score), char);
+        ptr += image->thread_limit * sizeof(worker_score);
+    }
+
+    sb->global  = (global_score *)ptr;
 
     image->pool = pool;
     image->sb   = sb;
@@ -231,12 +312,17 @@ image(CLASS, pool)
     SV *CLASS
     APR::Pool pool
     
+    
     CODE:
+    image_sanity_check(aTHX);
+
     RETVAL = (modperl_scoreboard_t *)apr_palloc(pool, sizeof(*RETVAL));
     
     if (ap_exists_scoreboard_image()) {
-        RETVAL->sb = ap_scoreboard_image;
+        RETVAL->sb   = ap_scoreboard_image;
         RETVAL->pool = pool;
+        ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &(RETVAL->server_limit));
+        ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &(RETVAL->thread_limit));
     }
     else {
         Perl_croak(aTHX_ "ap_scoreboard_image doesn't exist");
@@ -247,23 +333,33 @@ image(CLASS, pool)
     OUTPUT:
     RETVAL
 
+
+int
+server_limit(image)
+    Apache::Scoreboard image
+
+int
+thread_limit(image)
+    Apache::Scoreboard image
+
+    
 Apache::ScoreboardParentScore
-parent_score(self, idx=0)
-    Apache::Scoreboard self
+parent_score(image, idx=0)
+    Apache::Scoreboard image
     int idx
 
     PREINIT:
     process_score *ps;
     
     CODE:
-    ps = ap_get_scoreboard_process(idx);
-/* XXX */
+    ps = my_get_scoreboard_process(aTHX_ image, idx);
+    /* XXX */
     if (!ps->quiescing && ps->pid) {
-        RETVAL = (modperl_parent_score_t *)apr_pcalloc(self->pool, (sizeof(*RETVAL)));
+        RETVAL = (modperl_parent_score_t *)apr_pcalloc(image->pool,
+                                                       (sizeof(*RETVAL)));
         RETVAL->record = ps;
         RETVAL->idx    = idx;
-        RETVAL->sb     = self->sb;
-        RETVAL->pool   = self->pool;
+        RETVAL->image  = image;
     }
     else {
 	XSRETURN_UNDEF;
@@ -273,15 +369,27 @@ parent_score(self, idx=0)
     RETVAL
 
 Apache::ScoreboardWorkerScore
-worker_score(self, parent_idx, worker_idx)
-    Apache::Scoreboard self
+worker_score(image, parent_idx, worker_idx)
+    Apache::Scoreboard image
     int parent_idx
     int worker_idx
 
+    PREINIT:
+    //worker_score *ws;
+    
     CODE:
-    RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->pool, (sizeof(*RETVAL)));
-
-    RETVAL->record = ap_get_scoreboard_worker(parent_idx, worker_idx);
+    //ws = my_get_scoreboard_worker(aTHX_ image, parent_idx, worker_idx);
+    //RETVAL = (modperl_worker_score_t *)apr_pcalloc(image->pool,
+    //                                               (sizeof(*RETVAL)));
+    //RETVAL->record = ws;
+    if (((parent_idx < 0) || (image->server_limit < parent_idx)) ||
+        ((worker_idx < 0) || (image->thread_limit < worker_idx))) {
+        Perl_croak(aTHX_ "worker score [%d][%d] is out of limit",
+                   parent_idx, worker_idx);
+    }
+    RETVAL = (modperl_worker_score_t *)apr_pcalloc(image->pool,
+                                                   (sizeof(*RETVAL)));
+    RETVAL->record = &(image->sb->servers[parent_idx][worker_idx]);
     RETVAL->parent_idx = parent_idx;
     RETVAL->worker_idx = worker_idx;
     
@@ -289,8 +397,8 @@ worker_score(self, parent_idx, worker_idx)
     RETVAL
 
 SV *
-pids(self)
-    Apache::Scoreboard self
+pids(image)
+    Apache::Scoreboard image
 
     PREINIT:
     AV *av = newAV();
@@ -298,8 +406,8 @@ pids(self)
     scoreboard *sb;
 
     CODE:
-    sb = self->sb;
-    for (i = 0; i < server_limit; i++) {
+    sb = image->sb;
+    for (i = 0; i < image->server_limit; i++) {
         if (!(sb->parent[i].pid)) {
             break;
         }
@@ -317,8 +425,8 @@ pids(self)
 # find_child_by_pid from scoreboard.c
 
 int
-parent_idx_by_pid(self, pid)   
-    Apache::Scoreboard self
+parent_idx_by_pid(image, pid)   
+    Apache::Scoreboard image
     pid_t pid
 
     PREINIT:
@@ -326,10 +434,10 @@ parent_idx_by_pid(self, pid)
     scoreboard *sb;
 
     CODE:
-    sb = self->sb;
+    sb = image->sb;
     RETVAL = -1;
 
-    for (i = 0; i < server_limit; i++) {
+    for (i = 0; i < image->server_limit; i++) {
         if (sb->parent[i].pid == pid) {
             RETVAL = i;
             break;
@@ -340,8 +448,8 @@ parent_idx_by_pid(self, pid)
     RETVAL
 
 SV *
-thread_numbers(self, parent_idx)
-    Apache::Scoreboard self
+thread_numbers(image, parent_idx)
+    Apache::Scoreboard image
     int parent_idx
 
     PREINIT:
@@ -350,9 +458,9 @@ thread_numbers(self, parent_idx)
     scoreboard *sb;
 
     CODE:
-    sb = self->sb;
+    sb = image->sb;
 
-    for (i = 0; i < thread_limit; ++i) {
+    for (i = 0; i < image->thread_limit; ++i) {
         /* fprintf(stderr, "thread_num: server %d, thread %d pid %d\n",
            i, sb->servers[parent_idx][i].thread_num,
            (int)(sb->parent[parent_idx].pid)); */
@@ -366,8 +474,15 @@ thread_numbers(self, parent_idx)
     RETVAL
 
 apr_uint32_t
-scoreboard_up_time(self)
-    Apache::Scoreboard self
+scoreboard_up_time(image)
+    Apache::Scoreboard image
+
+
+
+
+
+
+
 
 MODULE = Apache::Scoreboard PACKAGE = Apache::ScoreboardParentScore PREFIX = parent_score_
     
@@ -378,17 +493,24 @@ next(self)
     PREINIT:
     int next_idx;
     process_score *ps;
+    modperl_scoreboard_t *image;
 
     CODE:
+    image = self->image;
     next_idx = self->idx + 1;
-    ps = ap_get_scoreboard_process(next_idx);
+    if (next_idx <= image->server_limit) {
+        ps = my_get_scoreboard_process(aTHX_ image, next_idx);
+    }
+    else {
+	XSRETURN_UNDEF;
+    }
 
     if (ps->pid) {
-        RETVAL = (modperl_parent_score_t *)apr_pcalloc(self->pool, sizeof(*RETVAL));
+        RETVAL = (modperl_parent_score_t *)apr_pcalloc(image->pool,
+                                                       sizeof(*RETVAL));
         RETVAL->record = ps;
         RETVAL->idx    = next_idx;
-        RETVAL->sb     = self->sb;
-        RETVAL->pool   = self->pool;
+        RETVAL->image  = image;
     }
     else {
 	XSRETURN_UNDEF;
@@ -402,8 +524,17 @@ worker_score(self)
     Apache::ScoreboardParentScore self
 
     CODE:
-    RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->pool, sizeof(*RETVAL));
-    RETVAL->record     = ap_get_scoreboard_worker(self->idx, 0);
+    RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
+                                                   sizeof(*RETVAL));
+//RETVAL->record     = my_get_scoreboard_worker(aTHX_ self->image,
+//                                                 self->idx, 0);
+
+    if (((self->idx < 0) || (self->image->server_limit < self->idx))) {
+        Perl_croak(aTHX_ "worker score [%d][%d] is out of limit",
+                   self->idx, 0);
+    }
+    RETVAL->record = &(self->image->sb->servers[self->idx][0]);
+
     RETVAL->parent_idx = self->idx;
     RETVAL->worker_idx = 0;
 
@@ -420,9 +551,11 @@ next_worker_score(self, mws)
     
     CODE:
     next_idx = mws->worker_idx + 1;
-    if (next_idx < thread_limit) {
-        RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->pool, sizeof(*RETVAL));
-        RETVAL->record = ap_get_scoreboard_worker(mws->parent_idx, next_idx);
+    if (next_idx < self->image->thread_limit) {
+        RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
+                                                       sizeof(*RETVAL));
+        RETVAL->record = my_get_scoreboard_worker(aTHX_ self->image,
+                                                  mws->parent_idx, next_idx);
         RETVAL->parent_idx = mws->parent_idx;
         RETVAL->worker_idx = next_idx;
     }
@@ -446,10 +579,12 @@ next_live_worker_score(self, mws)
     CODE:
     next_idx = mws->worker_idx;
 
-    while (++next_idx < thread_limit) {
-        worker_score *ws = ap_get_scoreboard_worker(mws->parent_idx, next_idx);
+    while (++next_idx < self->image->thread_limit) {
+        worker_score *ws = my_get_scoreboard_worker(aTHX_ self->image,
+                                                    mws->parent_idx, next_idx);
         if (LIVE_WORKER(ws)) {
-            RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->pool, sizeof(*RETVAL));
+            RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
+                                                           sizeof(*RETVAL));
             RETVAL->record     = ws;
             RETVAL->parent_idx = mws->parent_idx;
             RETVAL->worker_idx = next_idx;
@@ -478,10 +613,11 @@ next_active_worker_score(self, mws)
 
     CODE:
     next_idx = mws->worker_idx;
-    while (++next_idx < thread_limit) {
-        worker_score *ws = ap_get_scoreboard_worker(mws->parent_idx, next_idx);
+    while (++next_idx < self->image->thread_limit) {
+        worker_score *ws = my_get_scoreboard_worker(aTHX_ self->image,
+                                                    mws->parent_idx, next_idx);
         if (ACTIVE_WORKER(ws)) {
-            RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->pool,
+            RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
                                                            sizeof(*RETVAL));
             RETVAL->record     = ws;
             RETVAL->parent_idx = mws->parent_idx;
@@ -501,7 +637,15 @@ next_active_worker_score(self, mws)
 pid_t
 parent_score_pid(self)
     Apache::ScoreboardParentScore self
-    
+
+
+
+
+
+
+
+
+
 MODULE = Apache::Scoreboard PACKAGE = Apache::ScoreboardWorkerScore PREFIX = worker_score_
 
 void
@@ -556,14 +700,12 @@ start_time(self)
             (XSANY.any_i32 == 0 ? "start" : "stop"), tp);
 
     {
-        /*** XXX debug ***/
-        worker_score *ws_record = ap_get_scoreboard_worker(0, 0);
         SB_TRACE(MP_FUNC, "start: %5" APR_TIME_T_FMT "\n"
                  "stop: %5" APR_TIME_T_FMT "\n"
                  "last used: %5" APR_TIME_T_FMT "\n",
-                 ws_record->start_time,
-                 ws_record->stop_time,
-                 ws_record->last_used);
+                 self->record->start_time,
+                 self->record->stop_time,
+                 self->record->last_used);
     }
 
     /* do the same as Time::HiRes::gettimeofday */

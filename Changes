@@ -1,5 +1,21 @@
 2.05 -
 
+added new methods $image->thread_limit and $image->server_limit and
+deprecated the Apache::Const::SERVER_LIMIT and
+Apache::Const::THREAD_LIMIT constants, since those are useful only for
+the image of the Apache server inside which the script is run (if
+any).
+
+use the passed image object, rather than accessing the global
+ap_scoreboard_image. Previously we have switched to use Apache
+accessors, instead of accessing the struct directly, but the problem
+was that we no longer processed the real image object. So if the
+script has acquired a different image (not the one seen by the current
+process), we were handing bogus information. Now this has been fixed
+by copying the apache accessors and changing them to use the passed
+image.
+
+correct docs s/parent/parent_score/
 
 
 2.04 - Sat Jan 22 00:13:35 EST 2005

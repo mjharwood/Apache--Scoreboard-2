@@ -18,6 +18,9 @@ if ($ENV{MOD_PERL}) {
     require XSLoader;
     XSLoader::load(__PACKAGE__, $Apache::Scoreboard::VERSION);
 }
+else {
+    require Apache::DummyScoreboard;
+}
 
 
 use constant DEBUG => 0;
@@ -158,19 +161,21 @@ a single request to the remote server.  Example:
 
  my $image = Apache::Scoreboard->retrieve($local_filename);
 
-=item parent
+=item parent_score
 
 This method returns a reference to the first parent score entry in the 
 list, blessed into the I<Apache::ParentScore> class:
 
- my $parent = $image->parent;
+ my $parent_score = $image->parent_score;
 
 Iterating over the list of scoreboard slots is done like so:
 
- for (my $parent = $image->parent; $parent; $parent = $parent->next) {
-     my $pid = $parent->pid; #pid of the child
+ for (my $parent_score = $image->parent_score;
+      $parent_score;
+      $parent_score = $parent_score->next) {
+     my $pid = $parent_score->pid; #pid of the child
 
-     my $server = $parent->server; #Apache::ServerScore object
+     my $server = $parent_score->server; #Apache::ServerScore object
 
      ...
  }
@@ -181,7 +186,33 @@ Returns an array reference of all child pids:
 
  my $pids = $image->pids;
 
+
+=item server_limit
+
+Returns a server limit for the given image.
+
+ my $server_limit = $image->server_limit;
+
+use this instead of the deprecated C<Apache::Const::SERVER_LIMIT>
+constant.
+
+
+=item thread_limit
+
+Returns a threads limit per process for the given image.
+
+ my $thread_limit = $image->thread_limit;
+
+use this instead of the deprecated C<Apache::Const::THREAD_LIMIT>
+constant.
+
+
 =back
+
+
+
+
+
 
 =head2 The Apache::ParentScore Class
 
@@ -302,7 +333,20 @@ Returns the time taken to process the request in microseconds:
 
  my $req_time = $server->req_time;
 
+=item vhost
+
+Returns the vhost string if there is one.
+
+ my $vhost = $server->vhost;
+
 =back
+
+
+=head1 Outside of mod_perl Usage
+
+C<Apache::DummyScoreboard> is used internally if the code is not
+running under mod_perl. It has almost the same functionality with some
+limitations. See the C<Apache::DummyScoreboard> manpage for more info.
 
 =head1 SEE ALSO
 
@@ -311,3 +355,6 @@ Apache::VMonitor(3), GTop(3)
 =head1 AUTHOR
 
 Doug MacEachern
+
+Stas Bekman
+

@@ -26,36 +26,55 @@ static unsigned short unpack16(unsigned char *s)
     return ntohs(ashort);
 }
 
-#define WRITE_BUFF(buf, size, r) \
+#define WRITE_BUFF(buf, size, r)                                \
     if (ap_rwrite(buf, size, r) < 0) { return APR_EGENERAL; }
 
 static int scoreboard_send(request_rec *r)
 {
-    int i, psize, ssize, tsize;
-    char buf[SIZE16*2];
+    int server_num, psize, ssize, tsize;
+    char buf[SIZE16*4];
     char *ptr = buf;
+    int server_limit, thread_limit;
 
-    for (i = 0; i < server_limit; i++) {
-        if (!ap_scoreboard_image->parent[i].pid) {
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+    
+    for (server_num = 0; server_num < server_limit; server_num++) {
+        if (!ap_scoreboard_image->parent[server_num].pid) {
             break;
         }
     }
+
+    server_num = server_limit;
     
-    psize = i * sizeof(process_score);
-    ssize = i * sizeof(worker_score);
+    psize = sizeof(process_score) * server_num;
+    ssize = sizeof(worker_score)  * server_num * thread_limit;
     tsize = psize + ssize + sizeof(global_score) + sizeof(buf);
 
     pack16(ptr, psize);
     ptr += SIZE16;
     pack16(ptr, ssize);
-
+    ptr += SIZE16;
+    pack16(ptr, server_limit);
+    ptr += SIZE16;
+    pack16(ptr, thread_limit);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(),
+                 "send: sizes server_num=%d, thread_num=%d, psize=%d, "
+                 "ssize=%d, %d, %d, %d\n",
+                 server_num, thread_limit, psize, ssize,
+                 sizeof(global_score), sizeof(buf), tsize);
+ 
     ap_set_content_length(r, tsize);
     r->content_type = REMOTE_SCOREBOARD_TYPE;
     
     if (!r->header_only) {
 	WRITE_BUFF(&buf[0],                          sizeof(buf),          r);
 	WRITE_BUFF(&ap_scoreboard_image->parent[0],  psize,                r);
-	WRITE_BUFF(&ap_scoreboard_image->servers[0], ssize,                r);
+        //int i;
+    //for (i = 0; i < server_limit; i++) {
+    //    WRITE_BUFF(ap_scoreboard_image->servers[i], sizeof(worker_score), r);
+    //}
+    WRITE_BUFF(ap_scoreboard_image->servers[0], ssize,                r);
 	WRITE_BUFF(&ap_scoreboard_image->global,     sizeof(global_score), r);
     }
 
