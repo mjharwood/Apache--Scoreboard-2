@@ -71,10 +71,10 @@ static int scoreboard_send(request_rec *r)
     r->content_type = REMOTE_SCOREBOARD_TYPE;
     
     if (!r->header_only) {
-	WRITE_BUFF(&buf[0],                         sizeof(buf),          r);
-	WRITE_BUFF(&ap_scoreboard_image->parent[0], psize,                r);
+        WRITE_BUFF(&buf[0],                         sizeof(buf),          r);
+        WRITE_BUFF(&ap_scoreboard_image->parent[0], psize,                r);
         WRITE_BUFF(ap_scoreboard_image->servers[0], ssize,                r);
-	WRITE_BUFF(&ap_scoreboard_image->global,    sizeof(global_score), r);
+        WRITE_BUFF(&ap_scoreboard_image->global,    sizeof(global_score), r);
     }
 
     return APR_SUCCESS;

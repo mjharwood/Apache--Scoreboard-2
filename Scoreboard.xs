@@ -146,8 +146,8 @@ static worker_score *my_get_scoreboard_worker(pTHX_
 
 MP_INLINE
 static process_score *my_get_scoreboard_process(pTHX_
-                                         modperl_scoreboard_t *image,
-                                         int x)
+                                                modperl_scoreboard_t *image,
+                                                int x)
 {
     if ((x < 0) || (image->server_limit < x)) {
         Perl_croak(aTHX_ "parent score [%d] is out of limit", x);
@@ -265,7 +265,7 @@ thaw(CLASS, pool, packet)
     
     CODE:
     if (!(SvOK(packet) && SvCUR(packet) > (SIZE16*2))) {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     CLASS = CLASS; /* avoid warnings */
@@ -364,7 +364,7 @@ parent_score(image, idx=0)
         RETVAL->image  = image;
     }
     else {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     OUTPUT:
@@ -496,7 +496,7 @@ next(self)
         ps = my_get_scoreboard_process(aTHX_ image, next_idx);
     }
     else {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     if (ps->pid) {
@@ -507,7 +507,7 @@ next(self)
         RETVAL->image  = image;
     }
     else {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     OUTPUT:
@@ -547,7 +547,7 @@ next_worker_score(self, mws)
                                                       mws->parent_idx, next_idx);
     }
     else {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     OUTPUT:
@@ -581,7 +581,7 @@ next_live_worker_score(self, mws)
     }
 
     if (!found) {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     OUTPUT:
@@ -615,7 +615,7 @@ next_active_worker_score(self, mws)
     }
 
     if (!found) {
-	XSRETURN_UNDEF;
+        XSRETURN_UNDEF;
     }
 
     OUTPUT:
@@ -641,30 +641,30 @@ times(self)
 
     PPCODE:
     if (GIMME == G_ARRAY) {
-	/* same return values as CORE::times() */
-	EXTEND(sp, 4);
-	PUSHs(sv_2mortal(newSViv(self->record->times.tms_utime)));
-	PUSHs(sv_2mortal(newSViv(self->record->times.tms_stime)));
-	PUSHs(sv_2mortal(newSViv(self->record->times.tms_cutime)));
-	PUSHs(sv_2mortal(newSViv(self->record->times.tms_cstime)));
+        /* same return values as CORE::times() */
+        EXTEND(sp, 4);
+        PUSHs(sv_2mortal(newSViv(self->record->times.tms_utime)));
+        PUSHs(sv_2mortal(newSViv(self->record->times.tms_stime)));
+        PUSHs(sv_2mortal(newSViv(self->record->times.tms_cutime)));
+        PUSHs(sv_2mortal(newSViv(self->record->times.tms_cstime)));
     }
     else {
 #ifdef _SC_CLK_TCK
-	float tick = sysconf(_SC_CLK_TCK);
+        float tick = sysconf(_SC_CLK_TCK);
 #else
-	float tick = HZ;
+        float tick = HZ;
 #endif
-	if (self->record->access_count) {
-	    /* cpu %, same value mod_status displays */
-	      float RETVAL = (self->record->times.tms_utime +
-			      self->record->times.tms_stime +
-			      self->record->times.tms_cutime +
-			      self->record->times.tms_cstime);
-	    XPUSHs(sv_2mortal(newSVnv((double)RETVAL/tick)));
-	}
-	else {
-	    XPUSHs(sv_2mortal(newSViv((0))));
-	}
+        if (self->record->access_count) {
+            /* cpu %, same value mod_status displays */
+            float RETVAL = (self->record->times.tms_utime +
+                            self->record->times.tms_stime +
+                            self->record->times.tms_cutime +
+                            self->record->times.tms_cstime);
+            XPUSHs(sv_2mortal(newSVnv((double)RETVAL/tick)));
+        }
+        else {
+            XPUSHs(sv_2mortal(newSViv((0))));
+        }
     }
 
 
@@ -697,13 +697,13 @@ start_time(self)
 
     /* do the same as Time::HiRes::gettimeofday */
     if (GIMME == G_ARRAY) {
-	EXTEND(sp, 2);
-	PUSHs(sv_2mortal(newSViv(apr_time_sec(tp))));
-	PUSHs(sv_2mortal(newSViv(apr_time_sec(tp) - apr_time_usec(tp))));
+        EXTEND(sp, 2);
+        PUSHs(sv_2mortal(newSViv(apr_time_sec(tp))));
+        PUSHs(sv_2mortal(newSViv(apr_time_sec(tp) - apr_time_usec(tp))));
     } 
     else {
-	EXTEND(sp, 1);
-	PUSHs(sv_2mortal(newSVnv(apr_time_sec(tp))));
+        EXTEND(sp, 1);
+        PUSHs(sv_2mortal(newSVnv(apr_time_sec(tp))));
     }
 
 long
@@ -712,14 +712,14 @@ req_time(self)
 
     CODE:
     if (self->record->start_time == 0L) {
-	RETVAL = 0L;
+        RETVAL = 0L;
     }
     else {
-	RETVAL = (long)
+        RETVAL = (long)
             ((self->record->stop_time - self->record->start_time) / 1000);
     }
     if (RETVAL < 0L || !self->record->access_count) {
-	RETVAL = 0L;
+        RETVAL = 0L;
     }
 
     OUTPUT:
