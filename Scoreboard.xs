@@ -203,23 +203,20 @@ thaw(CLASS, pool, packet)
 
     CLASS = CLASS; /* avoid warnings */
  
-    image = (modperl_scoreboard_t *)apr_palloc(pool, sizeof(*image));
-    sb          =     (scoreboard *)apr_palloc(pool, sizeof(scoreboard));
-    sb->parent  =  (process_score *)apr_palloc(pool, sizeof(process_score *));
-    sb->servers =  (worker_score **)apr_palloc(pool, server_limit * sizeof(worker_score));
-    sb->global  =   (global_score *)apr_palloc(pool, sizeof(global_score *));
-    
+    image = (modperl_scoreboard_t *)apr_pcalloc(pool, sizeof(*image));
+    sb    =           (scoreboard *)apr_pcalloc(pool, sizeof(scoreboard));
+
     ptr = SvPVX(packet);
     psize = unpack16(ptr);
     ptr += SIZE16;
     ssize = unpack16(ptr);
     ptr += SIZE16;
 
-    Move(ptr, &sb->parent[0], psize, char);
+    sb->parent  = (process_score *)Copy_pool(pool, ptr, psize, char);
     ptr += psize;
-    Move(ptr, &sb->servers[0], ssize, char);
+    sb->servers = (worker_score **)Copy_pool(pool, ptr, ssize, char);
     ptr += ssize;
-    Move(ptr, &sb->global, sizeof(global_score), char);
+    sb->global  = (global_score *) Copy_pool(pool, ptr, sizeof(global_score), char);
 
     image->pool = pool;
     image->sb   = sb;

@@ -5,6 +5,7 @@ use warnings FATAL => 'all';
 
 use Apache::Test;
 use Apache::TestUtil;
+use Apache::TestTrace;
 
 use Apache::Response ();
 use Apache::RequestRec;
@@ -42,7 +43,7 @@ sub handler {
 
     ### constants ###
 
-    warn "PID: ", $$, "ppid:", getppid(), "\n";
+    debug "PID: ", $$, " ppid:", getppid(), "\n";
 
     t_debug("constants");
     ok Apache::Const::SERVER_LIMIT;
@@ -105,7 +106,6 @@ sub handler {
             ) {
             $next_ok = 0 unless worker_score_is_ok($worker_score);
         }
-warn "ok end\n";
 
         # iterating over only live workers for the given parent
         for (my $worker_score = $parent_score->worker_score;

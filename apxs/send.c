@@ -7,6 +7,10 @@
 #define Copy(s,d,n,t) (void)memcpy((char*)(d),(char*)(s), (n) * sizeof(t))
 #endif
 
+/* use this macro when using with objects created by the pool, can't
+ * mix memmove with pool allocation */
+#define Copy_pool(p, s, n, t) apr_pmemdup(p, s, (n) * sizeof(t))
+
 #define SIZE16 2
 
 static void pack16(unsigned char *s, int p)
@@ -21,7 +25,6 @@ static unsigned short unpack16(unsigned char *s)
     Copy(s, &ashort, SIZE16, char);
     return ntohs(ashort);
 }
-
 
 #define WRITE_BUFF(buf, size, r) \
     if (ap_rwrite(buf, size, r) < 0) { return APR_EGENERAL; }
