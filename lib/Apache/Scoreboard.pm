@@ -354,9 +354,9 @@ This is how to traverse all active workers for the given parent score:
       # do something with $worker_score
   }
 
-See also: C<L<worker_score()|/worker_score>,
-C<L<next_live_worker_score()|/next_live_worker_score> and
-C<L<next_worker_score()|/next_worker_score>.
+See also: C<L<worker_score()|/worker_score>>,
+C<L<next_live_worker_score()|/next_live_worker_score>> and
+C<L<next_worker_score()|/next_worker_score>>.
 
 
 
@@ -380,9 +380,9 @@ This is how to traverse all workers for the given parent score:
       # do something with $worker_score
   }
 
-See also: C<L<worker_score()|/worker_score>,
-C<L<next_active_worker_score()|/next_active_worker_score> and
-C<L<next_worker_score()|/next_worker_score>.
+See also: C<L<worker_score()|/worker_score>>,
+C<L<next_active_worker_score()|/next_active_worker_score>> and
+C<L<next_worker_score()|/next_worker_score>>.
 
 
 
@@ -403,9 +403,9 @@ This is how to traverse all workers for the given parent score:
       # do something with $worker_score
   }
 
-See also: C<L<worker_score()|/worker_score>,
-C<L<next_active_worker_score()|/next_active_worker_score> and
-C<L<next_live_worker_score()|/next_live_worker_score>.
+See also: C<L<worker_score()|/worker_score>>,
+C<L<next_active_worker_score()|/next_active_worker_score>> and
+C<L<next_live_worker_score()|/next_live_worker_score>>.
 
 
 
@@ -426,9 +426,9 @@ object of the given parent score:
 
   my $worker_score = $parent_score->worker_score;
 
-See also: C<L<next_active_worker_score()|/next_active_worker_score>,
-C<L<next_live_worker_score()|/next_live_worker_score> and
-C<L<next_worker_score()|/next_worker_score>.
+See also: C<L<next_active_worker_score()|/next_active_worker_score>>,
+C<L<next_live_worker_score()|/next_live_worker_score>> and
+C<L<next_worker_score()|/next_worker_score>>.
 
 
 
@@ -443,9 +443,9 @@ C<L<next_worker_score()|/next_worker_score>.
 
 To get the C<Apache::ScoreboardWorkerScore> object use the following
 methods: C<L<worker_score()|/worker_score>>,
-C<L<next_active_worker_score()|/next_active_worker_score>,
-C<L<next_live_worker_score()|/next_live_worker_score> and
-C<L<next_worker_score()|/next_worker_score>.
+C<L<next_active_worker_score()|/next_active_worker_score>>,
+C<L<next_live_worker_score()|/next_live_worker_score>> and
+C<L<next_worker_score()|/next_worker_score>>.
 
 
 
