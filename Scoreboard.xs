@@ -222,9 +222,6 @@ freeze(image)
     SvCUR_set(RETVAL, tsize+1);
     SvPOK_only(RETVAL);
 
-    /* XXX: sync with send(), since the data frozen by this
-     * method won't work outside the same Apache */
-
     /* fill the data buffer with the data we want to freeze */
     Move(&buf[0],        dptr, sizeof(buf),          char);
     dptr += sizeof(buf);
