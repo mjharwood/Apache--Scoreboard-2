@@ -1,3 +1,7 @@
+
+Apache::Scoreboard 2 REMOTE_SCOREBOARD_TYPE is available in global_score, 
+should probably use that instead of the hardwired value
+
 ---
 
 scripts under examples/ need to be updated to 2.0
