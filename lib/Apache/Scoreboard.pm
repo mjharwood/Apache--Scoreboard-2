@@ -268,7 +268,7 @@ C<L<fetch()|/fetch>> for details.
 
 =head2 C<server_limit>
 
-Returns a server limit for the given image.
+Returns a server limit for the given Apache server.
 
   my $server_limit = $image->server_limit;
 
@@ -318,29 +318,120 @@ constant.
 =head1 The C<Apache::ScoreboardParentScore> Class
 
 To get the C<Apache::ScoreboardParentScore> object use the
-C<L<$image->parent_score()|/C_parent_score_>> or
-C<L<$parent_score->next()|/C_next_>> methods.
+C<L<$image->parent_score()|/parent_score>> and
+C<L<$parent_score->next()|/next>> methods.
 
-=head2 C<pid>
 
-The parent keeps track of child pids with this field:
-
-  my $pid = $parent->pid;
-
-=head2 C<server>
-
-Returns an
-C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
-object:
-
-  my $server = $parent->server;
 
 =head2 C<next>
 
-Returns a reference to the next I<Apache::ScoreboardParentScore>
-object in the list:
+Returns the next I<Apache::ScoreboardParentScore> object in the list
+of parent scores (servers):
 
-  my $p = $parent->next;
+  my $parent_score_next = $parent_score->next;
+
+
+
+
+=head2 C<next_active_worker_score>
+
+  my $worker_score_next = $parent_score->next_active_worker_score($worker_score)
+
+Returns the next active
+C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
+object of the given parent score. An active worker is defined as a
+worker that does something at the moment this method was called (for
+the live L<image|/image>) or if it did something when the snapshot of
+the scoreboard was taken (via C<L<send()|/send>> or
+C<L<freeze()|/freeze>>.
+
+This is how to traverse all active workers for the given parent score:
+
+  for (my $worker_score = $parent_score->worker_score;
+          $worker_score;
+          $worker_score = $parent_score->next_active_worker_score($worker_score)
+      ) {
+      # do something with $worker_score
+  }
+
+See also: C<L<worker_score()|/worker_score>,
+C<L<next_live_worker_score()|/next_live_worker_score> and
+C<L<next_worker_score()|/next_worker_score>.
+
+
+
+
+=head2 C<next_live_worker_score>
+
+  my $worker_score_next = $parent_score->next_live_worker_score($worker_score)
+
+Returns the next live
+C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
+object of the given parent score. The live worker is defined as a
+worker that have served/serves at least one request and isn't yet
+dead.
+
+This is how to traverse all workers for the given parent score:
+
+  for (my $worker_score = $parent_score->worker_score;
+          $worker_score;
+          $worker_score = $parent_score->next_live_worker_score($worker_score)
+      ) {
+      # do something with $worker_score
+  }
+
+See also: C<L<worker_score()|/worker_score>,
+C<L<next_active_worker_score()|/next_active_worker_score> and
+C<L<next_worker_score()|/next_worker_score>.
+
+
+
+=head2 C<next_worker_score>
+
+  my $worker_score_next = $parent_score->next_worker_score($worker_score)
+
+Returns the next
+C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
+object of the given parent score.
+
+This is how to traverse all workers for the given parent score:
+
+  for (my $worker_score = $parent_score->worker_score;
+          $worker_score;
+          $worker_score = $parent_score->next_worker_score($worker_score)
+      ) {
+      # do something with $worker_score
+  }
+
+See also: C<L<worker_score()|/worker_score>,
+C<L<next_active_worker_score()|/next_active_worker_score> and
+C<L<next_live_worker_score()|/next_live_worker_score>.
+
+
+
+=head2 C<pid>
+
+Returns the pid of the parent score (server):
+
+  my $pid = $parent_score->pid;
+
+
+
+
+=head2 C<worker_score>
+
+Returns the first
+C<L<Apache::ScoreboardWorkerScore|/The_Apache::ScoreboardWorkerScore_Methods>>
+object of the given parent score:
+
+  my $worker_score = $parent_score->worker_score;
+
+See also: C<L<next_active_worker_score()|/next_active_worker_score>,
+C<L<next_live_worker_score()|/next_live_worker_score> and
+C<L<next_worker_score()|/next_worker_score>.
+
+
+
 
 
 
@@ -350,72 +441,96 @@ object in the list:
 
 =head1 The C<Apache::ScoreboardWorkerScore> Methods
 
-To get the C<Apache::ScoreboardWorkerScore> object use the
-C<L<$$parent->server()|/C_server_>> method.
+To get the C<Apache::ScoreboardWorkerScore> object use the following
+methods: C<L<worker_score()|/worker_score>>,
+C<L<next_active_worker_score()|/next_active_worker_score>,
+C<L<next_live_worker_score()|/next_live_worker_score> and
+C<L<next_worker_score()|/next_worker_score>.
 
-=head2 C<status>
 
-This method returns the status of child server, which is one of:
 
-  "_" Waiting for Connection
-  "S" Starting up
-  "R" Reading Request
-  "W" Sending Reply
-  "K" Keepalive (read)
-  "D" DNS Lookup
-  "L" Logging
-  "G" Gracefully finishing
-  "." Open slot with no current process
 
 =head2 C<access_count>
 
-The access count of the child server:
+The access count of the worker:
 
-  my $count = $server->access_count;
+  my $count = $worker_score->access_count;
 
-=head2 C<request>
 
-The first 64 characters of the HTTP request:
 
-  #e.g.: GET /scoreboard HTTP/1.0
-  my $request = $server->request;
+=head2 C<bytes_served>
+
+Total number of bytes served by this child:
+
+  my $bytes = $worker_score->bytes_served;
+
+
 
 =head2 C<client>
 
 The ip address or hostname of the client:
 
   #e.g.: 127.0.0.1
-  my $client = $server->client;
+  my $client = $worker_score->client;
 
-=head2 C<bytes_served>
 
-Total number of bytes served by this child:
 
-  my $bytes = $server->bytes_served;
 
 =head2 C<conn_bytes>
 
 Number of bytes served by the last connection in this child:
 
-  my $bytes = $server->conn_bytes;
+  my $bytes = $worker_score->conn_bytes;
+
+
+
 
 =head2 C<conn_count>
 
 Number of requests served by the last connection in this child:
 
-  my $count = $server->conn_count;
+  my $count = $worker_score->conn_count;
 
-=head2 C<times>
 
-In a list context, returns a four-element list giving the user and
-system times, in seconds, for this process and the children of this
-process.
 
-  my($user, $system, $cuser, $csystem) = $server->times;
+=head2 C<most_recent>
 
-In a scalar context, returns the overall CPU percentage for this server:
 
-  my $cpu = $server->times;
+META: complete
+
+
+
+=head2 C<my_access_count>
+
+META: complete
+
+
+
+=head2 C<my_bytes_served>
+
+META: complete
+
+
+
+=head2 C<request>
+
+The first 64 characters of the HTTP request:
+
+  #e.g.: GET /scoreboard HTTP/1.0
+  my $request = $worker_score->request;
+
+
+
+=head2 C<req_time>
+
+Returns the time taken to process the request in microseconds:
+
+  my $req_time = $worker_score->req_time;
+
+This feature was ported in Apache 2.0.53.
+
+
+
 
 =head2 C<start_time>
 
@@ -423,11 +538,42 @@ In a list context this method returns a 2 element list with the seconds and
 microseconds since the epoch, when the request was started.  In scalar
 context it returns floating seconds like Time::HiRes::time()
 
-  my($tv_sec, $tv_usec) = $server->start_time;
+  my($tv_sec, $tv_usec) = $worker_score->start_time;
 
-  my $secs = $server->start_time;
+  my $secs = $worker_score->start_time;
 
 META: as of Apache 2.0.53 it's yet unavailable (needs to be ported)
+
+
+
+
+
+=head2 C<status>
+
+  $status = $worker_score->status();
+
+This method returns the status of the given worker, as a number
+(constant), which can be mapped via the following list
+
+  "_" Waiting for Connection
+  "S" Starting up
+  "R" Reading Request
+  "W" Sending Reply
+  "K" Keepalive (read)
+  "D" DNS Lookup
+  "C" Closing connection
+  "L" Logging
+  "G" Gracefully finishing
+  "I" Idle cleanup of worker
+  "." Open slot with no current process
+
+META: see the TODO file: need to rework this method/add a new method
+to return a letter, and not an index, since the latter changes in the
+scoreboard once in a while, making the application display incorrect
+status.
+
+
+
 
 =head2 C<stop_time>
 
@@ -435,25 +581,50 @@ In a list context this method returns a 2 element list with the seconds and
 microseconds since the epoch, when the request was finished.  In scalar
 context it returns floating seconds like Time::HiRes::time()
 
-  my($tv_sec, $tv_usec) = $server->stop_time;
+  my($tv_sec, $tv_usec) = $worker_score->stop_time;
 
-  my $secs = $server->stop_time;
+  my $secs = $worker_score->stop_time;
 
 META: as of Apache 2.0.53 it's yet unavailable (needs to be ported)
 
-=head2 C<req_time>
 
-Returns the time taken to process the request in microseconds:
 
-  my $req_time = $server->req_time;
 
-This feature was ported in Apache 2.0.53.
+=head2 C<thread_num>
+
+XXX
+
+
+
+
+=head2 C<tid>
+
+XXX
+
+
+
+
+=head2 C<times>
+
+In a list context, returns a four-element list giving the user and
+system times, in seconds, for this process and the children of this
+process.
+
+  my($user, $system, $cuser, $csystem) = $worker_score->times;
+
+In a scalar context, returns the overall CPU percentage for this
+worker:
+
+  my $cpu = $worker_score->times;
+
+
+
 
 =head2 C<vhost>
 
 Returns the vhost string if there is one.
 
-  my $vhost = $server->vhost;
+  my $vhost = $worker_score->vhost;
 
 
 

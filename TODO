@@ -1,4 +1,14 @@
 
+the status() method returning a constant is not sufficient. We need to
+export the constants too (SERVER_DEAD, SERVER_READY, etc, see
+mod_status.c / scoreboard.h). Recently Apache has added some new
+entries in the status list, and now modules like Apache::VMonitor may
+show an incorrect status. May be a better solution is to provide new
+methods status_short() (just the letter), status_long() (the whole
+explanation).
+
+---
+
 Apache::Scoreboard 2 REMOTE_SCOREBOARD_TYPE is available in global_score, 
 should probably use that instead of the hardwired value
 
