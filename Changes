@@ -1,4 +1,8 @@
 
+2.04 - 
+
+
+
 2.03 - Sun Jan  2 17:24:54 EST 2005
 
 in thaw() replace the usage of memmove with apr_pmemdup, since objects
