@@ -20,20 +20,25 @@ my $store_file = catfile $vars->{documentroot}, "scoreboard";
 my $hostport = Apache::TestRequest::hostport($cfg);
 my $retrieve_url = "http://$hostport/scoreboard";
 
-my @worker_score_scalar_props = qw(
-    thread_num tid req_time most_recent status access_count
-    bytes_served my_access_count my_bytes_served conn_bytes conn_count
-    client request vhost
-);
+my @worker_score_scalar_props = 
+    qw(access_count bytes_served
+       client conn_bytes conn_count most_recent
+       my_access_count my_bytes_served request req_time
+       status thread_num tid);
+# vhost is not available outside mod_perl, since it requires a call to
+# an Apache method
+push @worker_score_scalar_props, "vhost" if $ENV{MOD_PERL};
 
-my @worker_score_dual_props = qw(
+my @worker_score_dual_ctx_props = qw(
     times start_time stop_time
 );
+
+my @worker_score_dual_var_props = qw(status);
 
 sub retrieve_url { return $retrieve_url }
 
 sub num_of_tests {
-    my $ntests = 16 + @worker_score_scalar_props + @worker_score_dual_props * 2;
+    my $ntests = 16;
     $ntests += 2 if $ENV{MOD_PERL}; # deprecated constants
     return $ntests;
 }
@@ -172,27 +177,9 @@ sub test2 {
     t_debug "pid: $$, self_parent_idx: $self_parent_idx";
     my $self_parent_score = $image->parent_score($self_parent_idx);
     t_debug "parent_idx_by_pid";
+    # parent_score_is_ok internally calls worker_score_is_ok on the
+    # first worker score
     ok parent_score_is_ok($self_parent_score);
-
-    ### worker_score properties ###
-
-    t_debug "worker_score properties:";
-    for (@worker_score_dual_props) {
-        my $res = $worker_score->$_();
-        t_debug "$_ (scalar ctx): $res";
-        ok defined $res;
-
-        my @res = $worker_score->$_();
-        t_debug "$_   (list ctx): @res";
-        ok @res;
-
-    }
-
-    for (@worker_score_scalar_props) {
-        my $res = $worker_score->$_();
-        t_debug "$_: $res";
-        ok defined $res;
-    }
 
 }
 
@@ -218,16 +205,6 @@ sub image_is_ok {
     return $status;
 }
 
-my @methods = qw(access_count bytes_served
-                 client conn_bytes conn_count most_recent
-                 my_access_count my_bytes_served request req_time
-                 start_time status stop_time thread_num tid times
-                );
-
-# vhost is not available outside mod_perl, since it requires a call to
-# an Apache method
-push @methods, "vhost" if $ENV{MOD_PERL};
-
 # check that all worker_score props return something
 sub parent_score_is_ok {
     my ($parent_score) = shift;
@@ -236,13 +213,9 @@ sub parent_score_is_ok {
 
     $ok = 0 unless $parent_score && $parent_score->pid;
 
+    # check the first worker
     my $worker_score = $parent_score->worker_score;
-    for (@methods) {
-        no strict 'refs';
-        my $val = $worker_score->$_;
-        #error "$_ [$val]";
-        $ok = 0 unless defined $val;
-    }
+    $ok = 0 unless worker_score_is_ok($worker_score);
 
     return $ok;
 }
@@ -254,12 +227,19 @@ sub worker_score_is_ok {
     return 0 unless $worker_score;
 
     my $ok = 1;
-    for (@worker_score_dual_props) {
+    for (@worker_score_dual_ctx_props) {
         my $res = $worker_score->$_();
         $ok = 0 unless defined $res;
 
         my @res = $worker_score->$_();
         $ok = 0 unless @res;
+    }
+
+    # status: dual var
+    {
+        my $res = $worker_score->status();
+        $ok = 0 unless $res/1 == $res;
+        $ok = 0 unless $res =~ /^[\w\.]$/;
     }
 
     for (@worker_score_scalar_props) {

@@ -552,8 +552,9 @@ META: as of Apache 2.0.53 it's yet unavailable (needs to be ported)
 
   $status = $worker_score->status();
 
-This method returns the status of the given worker, as a number
-(constant), which can be mapped via the following list
+This method returns the status of the given worker as a
+dual-variable. In the string context it gives a single letter, which
+can be mapped to the long description via the following list
 
   "_" Waiting for Connection
   "S" Starting up
@@ -567,11 +568,10 @@ This method returns the status of the given worker, as a number
   "I" Idle cleanup of worker
   "." Open slot with no current process
 
-META: see the TODO file: need to rework this method/add a new method
-to return a letter, and not an index, since the latter changes in the
-scoreboard once in a while, making the application display incorrect
-status.
-
+In the numerical context it returns the numerical status (which
+corresponds to a C define like SERVER_DEAD, SERVER_READY, etc) for
+which we don't really have the use at the moment. You should use the
+string context to get the status.
 
 
 
