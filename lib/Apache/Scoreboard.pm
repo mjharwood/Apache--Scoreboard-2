@@ -523,7 +523,7 @@ The first 64 characters of the HTTP request:
 
 =head2 C<req_time>
 
-Returns the time taken to process the request in microseconds:
+Returns the time taken to process the request in milliseconds:
 
   my $req_time = $worker_score->req_time;
 
