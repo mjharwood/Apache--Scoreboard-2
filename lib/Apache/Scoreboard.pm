@@ -5,6 +5,8 @@ $Apache::Scoreboard::VERSION = '2.05';
 use strict;
 use warnings FATAL => 'all';
 
+use Carp;
+
 BEGIN {
     require mod_perl;
     die "This module was built against mod_perl 2.0 ",
@@ -22,7 +24,6 @@ else {
     require Apache::DummyScoreboard;
 }
 
-
 use constant DEBUG => 0;
 
 my $ua;
@@ -39,10 +40,8 @@ sub http_fetch {
 
     my $request = HTTP::Request->new('GET', $url);
     my $response = $ua->request($request);
-    unless ($response->is_success) {
-	warn "request failed: ", $response->status_line if DEBUG;
-	return undef;
-    }
+    die "failed to execute: 'GET $url', response: ",
+        $response->status_line unless $response->is_success;
 
     # XXX: fixme
 #    my $type = $response->header('Content-type');
@@ -66,6 +65,7 @@ sub fetch_store {
 
 sub store {
     my($self, $frozen_image, $file) = @_;
+    croak "undefined image passed" unless $frozen_image;
     open my $fh, ">$file" or die "open $file: $!";
     print $fh $frozen_image;
     close $fh;
