@@ -1,25 +1,30 @@
-apxs/mod_scoreboard_send.c
-apxs/send.c
 Changes
-Dummy/dummy.c
 Dummy/DummyScoreboard.pm
 Dummy/Makefile.PL
+Dummy/dummy.c
 Dummy/typemap
+MANIFEST			     This list of files
+META.yml                             Module meta-data (added by MakeMaker)
+Makefile.PL
+README
+Scoreboard.xs
+TODO
+apxs/mod_scoreboard_send.c
+apxs/send.c
 examples/scoreboard-access-png.pl
 examples/scoreboard-cpu-png.pl
 examples/scoreboard-mem-usage-png.pl
 examples/scoreboard-status-png.pl
 lib/Apache/Scoreboard.pm
 lib/Apache/ScoreboardGraph.pm
-Makefile.PL
-MANIFEST			This list of files
-README
-Scoreboard.xs
-t/apache/scoreboard.t
+t/TEST.PL
 t/conf/extra.conf.in
 t/conf/modperl_extra.pl
-t/response/TestApache/scoreboard.pm
-t/TEST.PL
-TODO
+t/external/basic.t
+t/htdocs
+t/htdocs/scoreboard
+t/internal/basic.t
+t/lib/MyTest/Common.pm
+t/response/TestInternal/basic.pm
 typemap
-META.yml                                 Module meta-data (added by MakeMaker)
+

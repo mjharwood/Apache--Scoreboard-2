@@ -1,6 +1,16 @@
+---
 
-DummyScoreboard needs to be implemented, so the image can be processed
-w/o requiring a running modperl environment.
+scripts under examples/ need to be updated to 2.0
+
+---
+
+apxs/mod_scoreboard_send.c needs to be ported to Apache 2.0
+
+---
+
+lib/Apache/ScoreboardGraph.pm needs to be ported
+
+---
 
 modperl's xs/typemap while includes the conversions for certain types
 it doesn't include the typemap declaration, so XS extensions have to
