@@ -1,0 +1,12 @@
+modperl's xs/typemap while includes the conversions for certain types
+it doesn't include the typemap declaration, so XS extensions have to
+add things like:
+
+Apache::RequestRec	        T_APACHEOBJ
+APR::Pool                       T_PTROBJ
+
+to the local typemap file. Would be nice if mod_perl had these
+declared already in its typemap.
+
+---
+

@@ -1,0 +1,60 @@
+0.10 - February 8, 2000
+
+fixed core dump in $image->servers($i), thanks to Stas for the spot
+
+0.09 - January 31, 2000
+
+added $image->self method
+
+fixed bug in thaw() (Zero the scoreboard image)
+
+0.08 - December 7, 1999
+
+most of example code moved to Apache::ScoreboardGraph
+
+thaw() uses my_scoreboard_image instead of ap_scoreboard_image
+
+0.07 - December 5, 1999
+
+req_time and scalar times will return 0 if access_count == 0
+
+0.06 - December 5, 1999
+
+removed pid-test
+
+added examples/
+
+added Apache::Scoreboard->{pids,fetch_store,retrieve} methods
+
+added Apache::Scoreboard::size_string function
+
+added apxs/mod_scoreboard_send.c
+
+added docs
+
+added Apache::ParentScore->{next,server} methods
+
+Apache::ShortScore class renamed to Apache::ServerScore
+
+0.05 - November 28, 1999
+
+$server->status is now a dual-var
+
+added times(), start_time(), stop_time(), req_time() methods
+
+fetch() is more robust
+
+0.04 - November 23, 1999
+
+added send/fetch methods
+
+0.03 - October 14, 1999
+
+added Apache::ShortScore client and request methods
+[Stas Bekman <sbekman@iil.intel.com>]
+
+fix PREFIX for Apache::ShortScore [Stas Bekman <sbekman@iil.intel.com>]
+
+0.02 - October 5, 1999
+
+first release
