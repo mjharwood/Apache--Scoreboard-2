@@ -33,7 +33,7 @@ my @worker_score_dual_props = qw(
 sub retrieve_url { return $retrieve_url }
 
 sub num_of_tests {
-    my $ntests = 15 + @worker_score_scalar_props + @worker_score_dual_props * 2;
+    my $ntests = 16 + @worker_score_scalar_props + @worker_score_dual_props * 2;
     $ntests += 2 if $ENV{MOD_PERL}; # deprecated constants
     return $ntests;
 }
@@ -77,16 +77,19 @@ sub test1 {
         ok image_is_ok($image);
     }
 
-    # testing freeze/store/retrieve/thaw the scoreboard image
+    # testing freeze+thaw / store+retrieve the scoreboard image
     {
         t_debug "image freeze/thaw";
+        my $image = Apache::Scoreboard->fetch($pool, $retrieve_url);
+        ok image_is_ok($image);
+
         my $frozen_image = $image->freeze;
         my $thawed_image = Apache::Scoreboard->thaw($pool, $frozen_image);
         ok image_is_ok($thawed_image);
 
         t_debug("image store/retrieve ($store_file)");
         Apache::Scoreboard->store($frozen_image, $store_file);
-        my $image = Apache::Scoreboard->retrieve($pool, $store_file);
+        $image = Apache::Scoreboard->retrieve($pool, $store_file);
         ok image_is_ok($image);
     }
 }
