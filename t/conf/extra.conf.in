@@ -9,14 +9,14 @@ PerlSwitches -wT
 PerlModule Apache::Scoreboard
 <Location /scoreboard>
     SetHandler modperl
-    PerlHandler Apache::Scoreboard::send
+    PerlResponseHandler Apache::Scoreboard::send
 </Location>
 
 ## Configuration in httpd.conf
 #PerlModule Apache::VMonitor
 #<Location /system/vmonitor>
 #    SetHandler perl-script
-#    PerlHandler Apache::VMonitor
+#    PerlResponseHandler Apache::VMonitor
 #</Location>
 
 ##### DEVMODE: Remove in production ###
