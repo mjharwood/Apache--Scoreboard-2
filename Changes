@@ -1,5 +1,11 @@
 
-2.04 - 
+2.04 - Sat Jan 22 00:13:35 EST 2005
+
+s/sv_setpvf/Perl_sv_setpvf/ to support perls that don't have this
+macro [Markus Wichitill <mawic@gmx.de>]
+
+tests config: s/PerlHandler/PerlResponseHandler/ [Markus Wichitill
+<mawic@gmx.de>]
 
 
 
@@ -11,14 +17,20 @@ this problem after apr was compiled with CPPFLAGS="-DAPR_BUCKET_DEBUG"
 --enable-pool-debug, were getting segfaults when the pool was
 destroyed)
 
+
+
 2.02 - Tue Nov  9 18:50:29 EST 2004
 
 - sync with mp2 API changed (s/APR::OS::Thread/U32/) and require
   1.99_17 where that change has happened
 
+
+
 2.01 - Mon Dec 22 12:52:11 PST 2003
 
 - forgot to require mod_perl 1.99_12
+
+
 
 2.0 - Mon Dec 22 12:00:11 PST 2003
 
