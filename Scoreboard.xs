@@ -132,6 +132,7 @@ static void constants_init(pTHX)
 
 }
 
+MP_INLINE
 static worker_score *my_get_scoreboard_worker(pTHX_
                                               modperl_scoreboard_t *image,
                                               int x, int y)
@@ -143,9 +144,10 @@ static worker_score *my_get_scoreboard_worker(pTHX_
     return &image->sb->servers[x][y];
 }
 
+MP_INLINE
 static process_score *my_get_scoreboard_process(pTHX_
-                                                modperl_scoreboard_t *image,
-                                                int x)
+                                         modperl_scoreboard_t *image,
+                                         int x)
 {
     if ((x < 0) || (image->server_limit < x)) {
         Perl_croak(aTHX_ "parent score [%d] is out of limit", x);
@@ -375,23 +377,15 @@ worker_score(image, parent_idx, worker_idx)
     int worker_idx
 
     PREINIT:
-    //worker_score *ws;
+    worker_score *ws;
     
     CODE:
-    //ws = my_get_scoreboard_worker(aTHX_ image, parent_idx, worker_idx);
-    //RETVAL = (modperl_worker_score_t *)apr_pcalloc(image->pool,
-    //                                               (sizeof(*RETVAL)));
-    //RETVAL->record = ws;
-    if (((parent_idx < 0) || (image->server_limit < parent_idx)) ||
-        ((worker_idx < 0) || (image->thread_limit < worker_idx))) {
-        Perl_croak(aTHX_ "worker score [%d][%d] is out of limit",
-                   parent_idx, worker_idx);
-    }
+    ws = my_get_scoreboard_worker(aTHX_ image, parent_idx, worker_idx);
     RETVAL = (modperl_worker_score_t *)apr_pcalloc(image->pool,
                                                    (sizeof(*RETVAL)));
-    RETVAL->record = &(image->sb->servers[parent_idx][worker_idx]);
     RETVAL->parent_idx = parent_idx;
     RETVAL->worker_idx = worker_idx;
+    RETVAL->record = ws;
     
     OUTPUT:
     RETVAL
@@ -526,17 +520,10 @@ worker_score(self)
     CODE:
     RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
                                                    sizeof(*RETVAL));
-//RETVAL->record     = my_get_scoreboard_worker(aTHX_ self->image,
-//                                                 self->idx, 0);
-
-    if (((self->idx < 0) || (self->image->server_limit < self->idx))) {
-        Perl_croak(aTHX_ "worker score [%d][%d] is out of limit",
-                   self->idx, 0);
-    }
-    RETVAL->record = &(self->image->sb->servers[self->idx][0]);
-
     RETVAL->parent_idx = self->idx;
     RETVAL->worker_idx = 0;
+    RETVAL->record     = my_get_scoreboard_worker(aTHX_ self->image,
+                                                  self->idx, 0);
 
     OUTPUT:
     RETVAL
@@ -554,10 +541,10 @@ next_worker_score(self, mws)
     if (next_idx < self->image->thread_limit) {
         RETVAL = (modperl_worker_score_t *)apr_pcalloc(self->image->pool,
                                                        sizeof(*RETVAL));
-        RETVAL->record = my_get_scoreboard_worker(aTHX_ self->image,
-                                                  mws->parent_idx, next_idx);
         RETVAL->parent_idx = mws->parent_idx;
         RETVAL->worker_idx = next_idx;
+        RETVAL->record     = my_get_scoreboard_worker(aTHX_ self->image,
+                                                      mws->parent_idx, next_idx);
     }
     else {
 	XSRETURN_UNDEF;

@@ -21,8 +21,6 @@ t/TEST.PL
 t/conf/extra.conf.in
 t/conf/modperl_extra.pl
 t/external/basic.t
-t/htdocs
-t/htdocs/scoreboard
 t/internal/basic.t
 t/lib/MyTest/Common.pm
 t/response/TestInternal/basic.pm

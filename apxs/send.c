@@ -58,24 +58,23 @@ static int scoreboard_send(request_rec *r)
     pack16(ptr, server_limit);
     ptr += SIZE16;
     pack16(ptr, thread_limit);
+
+#if 0
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, modperl_global_get_server_rec(),
                  "send: sizes server_num=%d, thread_num=%d, psize=%d, "
                  "ssize=%d, %d, %d, %d\n",
                  server_num, thread_limit, psize, ssize,
                  sizeof(global_score), sizeof(buf), tsize);
- 
+#endif
+    
     ap_set_content_length(r, tsize);
     r->content_type = REMOTE_SCOREBOARD_TYPE;
     
     if (!r->header_only) {
-	WRITE_BUFF(&buf[0],                          sizeof(buf),          r);
-	WRITE_BUFF(&ap_scoreboard_image->parent[0],  psize,                r);
-        //int i;
-    //for (i = 0; i < server_limit; i++) {
-    //    WRITE_BUFF(ap_scoreboard_image->servers[i], sizeof(worker_score), r);
-    //}
-    WRITE_BUFF(ap_scoreboard_image->servers[0], ssize,                r);
-	WRITE_BUFF(&ap_scoreboard_image->global,     sizeof(global_score), r);
+	WRITE_BUFF(&buf[0],                         sizeof(buf),          r);
+	WRITE_BUFF(&ap_scoreboard_image->parent[0], psize,                r);
+        WRITE_BUFF(ap_scoreboard_image->servers[0], ssize,                r);
+	WRITE_BUFF(&ap_scoreboard_image->global,    sizeof(global_score), r);
     }
 
     return APR_SUCCESS;
