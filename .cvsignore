@@ -1,7 +1,7 @@
 Makefile
 Makefile.old
 blibdirs
-blibs
+blib
 Scoreboard.c
 Scoreboard.bs
 
