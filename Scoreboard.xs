@@ -613,7 +613,7 @@ worker_score_status(self)
     RETVAL
 
 # at the moment always gives 0 (blame httpd)    
-APR::OS::Thread
+U32
 worker_score_tid(self)
     Apache::ScoreboardWorkerScore self
 

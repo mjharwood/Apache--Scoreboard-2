@@ -1,6 +1,6 @@
 package Apache::Scoreboard;
 
-$Apache::Scoreboard::VERSION = '2.01';
+$Apache::Scoreboard::VERSION = '2.02';
 
 use strict;
 use warnings FATAL => 'all';

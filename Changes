@@ -1,4 +1,9 @@
 
+2.02 - Tue Nov  9 18:50:29 EST 2004
+
+- sync with mp2 API changed (s/APR::OS::Thread/U32/) and require
+  1.99_17 where that change has happened
+
 2.01 - Mon Dec 22 12:52:11 PST 2003
 
 - forgot to require mod_perl 1.99_12

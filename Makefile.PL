@@ -21,8 +21,8 @@ use Apache::TestMM qw(test clean);
 
 # prerequisites
 my %require = (
-    "Apache::Test" => "1.0",
-    "mod_perl"     => "1.9912",
+    "Apache::Test" => "1.10", # ipv6 fixes
+    "mod_perl"     => "1.9917",
 );
 
 my @scripts = qw(t/TEST);
