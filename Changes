@@ -1,4 +1,4 @@
-2.06 - dev
+2.06 - Fri Mar 18 13:50:49 EST 2005
 
 fix the buggy reconstruction of the fetched binary image in thaw()
 
