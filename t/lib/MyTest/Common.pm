@@ -196,31 +196,6 @@ sub test2 {
 
 }
 
-my @methods = qw(status access_count request client
-                 bytes_served conn_bytes conn_count times start_time
-                 stop_time req_time);
-
-# vhost is not available outside mod_perl, since it requires a call to
-# an Apache method
-push @methods, "vhost" if $ENV{MOD_PERL};
-
-sub score_is_ok {
-    my $parent = shift;
-
-    my $ok = 1;
-    $ok = 0 unless $parent->pid;
-
-    my $server = $parent->server; # Apache::ServerScore object
-    for (@methods) {
-        no strict 'refs';
-        my $val = $server->$_;
-        #error "$_ [$val]";
-        $ok = 0 unless defined $val;
-    }
-
-    return $ok;
-}
-
 # try to access various underlying datastructures to test that the
 # image is valid
 sub image_is_ok {
@@ -243,15 +218,29 @@ sub image_is_ok {
     return $status;
 }
 
+my @methods = qw(status access_count request client
+                 bytes_served conn_bytes conn_count times start_time
+                 stop_time req_time);
+
+# vhost is not available outside mod_perl, since it requires a call to
+# an Apache method
+push @methods, "vhost" if $ENV{MOD_PERL};
+
 # check that all worker_score props return something
 sub parent_score_is_ok {
     my ($parent_score) = shift;
 
     my $ok = 1;
 
-    $ok = 0 unless $parent_score && 
-                   $parent_score->pid && 
-                   $parent_score->worker_score;
+    $ok = 0 unless $parent_score && $parent_score->pid;
+
+    my $worker_score = $parent_score->worker_score;
+    for (@methods) {
+        no strict 'refs';
+        my $val = $worker_score->$_;
+        #error "$_ [$val]";
+        $ok = 0 unless defined $val;
+    }
 
     return $ok;
 }
