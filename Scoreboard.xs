@@ -688,7 +688,7 @@ start_time(self)
     if (GIMME == G_ARRAY) {
         EXTEND(sp, 2);
         PUSHs(sv_2mortal(newSViv(apr_time_sec(tp))));
-        PUSHs(sv_2mortal(newSViv(apr_time_sec(tp) - apr_time_usec(tp))));
+        PUSHs(sv_2mortal(newSViv(apr_time_usec(tp))));
     } 
     else {
         EXTEND(sp, 1);
