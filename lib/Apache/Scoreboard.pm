@@ -1,14 +1,18 @@
 package Apache::Scoreboard;
 
+our $VERSION = '2.0';
+
 use strict;
 use warnings FATAL => 'all';
 
-BEGIN {
-    our $VERSION = '0.01';
-    use XSLoader ();
-    XSLoader::load __PACKAGE__;
-    #XSLoader::load(__PACKAGE__, $VERSION);
-}
+use Apache2;
+use mod_perl;
+die "This module was built against mod_perl 2.0 ",
+    "and can't be used with $mod_perl::VERSION, "
+    unless $mod_perl::VERSION > 1.98;
+
+use XSLoader;
+XSLoader::load __PACKAGE__, $VERSION;
 
 use constant DEBUG => 0;
 
@@ -110,7 +114,7 @@ which must contain the following configuration:
 
  PerlModule Apache::Scoreboard
  <Location /scoreboard>
-    SetHandler perl-script
+    SetHandler modperl
     PerlHandler Apache::Scoreboard::send
     order deny,allow
     deny from all

@@ -3,47 +3,42 @@ package TestApache::scoreboard;
 use strict;
 use warnings FATAL => 'all';
 
-BEGIN {warn(join "\n", @INC);}
-
-use Apache::Const -compile => 'OK';
-
 use Apache::Test;
 use Apache::TestUtil;
 
 use Apache::Response ();
+use Apache::RequestRec;
+use Apache::Scoreboard;
 
 use File::Spec::Functions qw(catfile);
 
-use Apache::Scoreboard;
-
-require Apache::RequestRec;
+use Apache::Const -compile => 'OK';
 
 my @worker_score_scalar_props = qw(
-       req_time most_recent status access_count bytes_served client
-       my_access_count my_bytes_served conn_bytes conn_count client
-       request vhost
+    thread_num tid req_time most_recent status access_count
+    bytes_served client my_access_count my_bytes_served conn_bytes
+    conn_count client request vhost
 );
 
 my @worker_score_dual_props = qw(
-       times start_time stop_time
+    times start_time stop_time
 );
+
+
+my $cfg = Apache::Test::config();
+my $vars = $cfg->{vars};
+
+my $store_file = catfile $vars->{documentroot}, "scoreboard";
+my $hostport = Apache::TestRequest::hostport($cfg);
+my $retrieve_url = "http://$hostport/scoreboard";
 
 sub handler {
     my $r = shift;
-
-    my $cfg = Apache::Test::config();
-    my $vars = $cfg->{vars};
-
-    my $store_file = catfile $vars->{documentroot}, "scoreboard";
-    my $hostport = Apache::TestRequest::hostport($cfg);
-    my $retrieve_url = "http://$hostport/scoreboard";
 
     my $ntests = 15 + @worker_score_scalar_props + @worker_score_dual_props * 2;
     $ntests += 2 if $vars->{maxclients} > 1;
 
     plan $r, todo => [], tests => $ntests, ['status'];
-
-
 
     ### constants ###
 
@@ -158,9 +153,6 @@ warn "ok end\n";
     my $self_parent_score = $image->parent_score($self_parent_idx);
     t_debug "parent_idx_by_pid";
     ok parent_score_is_ok($self_parent_score);
-
-
-
 
     ### worker_score properties ###
 

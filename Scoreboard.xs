@@ -45,6 +45,11 @@ static char status_flags[SERVER_NUM_STATUS];
 #define worker_score_most_recent(mws) \
     (apr_uint32_t) apr_time_sec(apr_time_now() - mws->record.last_used);
         
+#if APR_HAS_THREADS
+#define worker_score_tid(mws)             mws->record.tid
+#endif
+
+#define worker_score_thread_num(mws)      mws->record.thread_num
 #define worker_score_access_count(mws)    mws->record.access_count
 #define worker_score_bytes_served(mws)    mws->record.bytes_served
 #define worker_score_my_access_count(mws) mws->record.my_access_count
@@ -575,8 +580,24 @@ worker_score_status(self)
     OUTPUT:
     RETVAL
 
+APR::OS::Thread
+worker_score_tid(self)
+    Apache::ScoreboardWorkerScore self
 
+    CODE:
+#if APR_HAS_THREADS
+    RETVAL = self->record.tid;
+#else
+    RETVAL = NULL;
+#endif
 
+    OUTPUT:
+    RETVAL
+    
+int
+worker_score_thread_num(self)
+    Apache::ScoreboardWorkerScore self
+    
 unsigned long
 worker_score_access_count(self)
     Apache::ScoreboardWorkerScore self

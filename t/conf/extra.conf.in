@@ -1,21 +1,23 @@
 # make sure that we test under Taint mode
-PerlSwitches -T
+PerlSwitches -wT
 
-# debug
-PerlModule +Apache::Scoreboard
-ExtendedStatus On
- #PerlModule Apache::Scoreboard
- <Location /scoreboard>
-    SetHandler perl-script
+<IfModule mod_status.c>
+    # XXX: can try to loadmodule mod_status if it's not loaded and DSO
+    ExtendedStatus On
+</IfModule>
+
+PerlModule Apache::Scoreboard
+<Location /scoreboard>
+    SetHandler modperl
     PerlHandler Apache::Scoreboard::send
- </Location>
+</Location>
 
-  # Configuration in httpd.conf
- # PerlModule +Apache::VMonitor
-  <Location /system/vmonitor>
-    SetHandler perl-script
-    PerlHandler Apache::VMonitor
-  </Location>
+## Configuration in httpd.conf
+#PerlModule Apache::VMonitor
+#<Location /system/vmonitor>
+#    SetHandler perl-script
+#    PerlHandler Apache::VMonitor
+#</Location>
 
 ##### DEVMODE: Remove in production ###
 PerlModule Apache::Reload
@@ -24,7 +26,7 @@ PerlSetVar ReloadAll Off
 PerlSetVar ReloadModules "Apache::VMonitor"
 PerlSetVar ReloadDebug On
 
-PerlModule Apache::Response
+#PerlModule Apache::Response
 
 #  # startup file or <Perl> section:
 #  use Apache::VMonitor();
