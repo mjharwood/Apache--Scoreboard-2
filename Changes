@@ -1,10 +1,18 @@
 2.05 -
 
+Apache::DummyScoreboard was ported to mp2 (this is used to process a
+scoreboard outside running Apache).
+
+when freezing/sending don't try to figure out what are the live
+servers, since a sequential search doesn't work. if a server went
+away, there will be a hole, e.g. if C goes down in ABCDE, we will get
+ABXDE and send only AB info. so just send them all
+
 added new methods $image->thread_limit and $image->server_limit and
 deprecated the Apache::Const::SERVER_LIMIT and
-Apache::Const::THREAD_LIMIT constants, since those are useful only for
-the image of the Apache server inside which the script is run (if
-any).
+Apache::Const::THREAD_LIMIT constants, since those are correct and
+useful only for the image of the Apache server parsed from within the
+running server.
 
 use the passed image object, rather than accessing the global
 ap_scoreboard_image. Previously we have switched to use Apache

@@ -189,28 +189,26 @@ scoreboard_send(r)
     Apache::RequestRec r
 
 
-
 SV *
 freeze(image)
     Apache::Scoreboard image
 
     PREINIT:
-    int psize, ssize, tsize;
+    int psize, ssize, tsize, msize, i;
     char buf[SIZE16*4];
-    char *dptr, *data, *ptr = buf;
+    char *dptr, *ptr = buf;
     scoreboard *sb;
 
     CODE:
     sb = image->sb;
     
     psize = sizeof(process_score) * image->server_limit;
-    ssize = sizeof(worker_score)  * image->server_limit * image->thread_limit;
+    msize = sizeof(worker_score)  * image->thread_limit;
+    ssize = msize * image->server_limit;
     tsize = psize + ssize + sizeof(global_score) + sizeof(buf);
     /* fprintf(stderr, "sizes %d, %d, %d, %d, %d\n",
        psize, ssize, sizeof(global_score) , sizeof(buf), tsize); */
                  
-    data = (char *)apr_palloc(image->pool, tsize);
-    
     pack16(ptr, psize);
     ptr += SIZE16;
     pack16(ptr, ssize);
@@ -219,25 +217,24 @@ freeze(image)
     ptr += SIZE16;
     pack16(ptr, image->thread_limit);
 
+    RETVAL = NEWSV(0, tsize);
+    dptr = SvPVX(RETVAL);
+    SvCUR_set(RETVAL, tsize+1);
+    SvPOK_only(RETVAL);
+
     /* XXX: sync with send(), since the data frozen by this
      * method won't work outside the same Apache */
 
     /* fill the data buffer with the data we want to freeze */
-    dptr = data;
     Move(&buf[0],        dptr, sizeof(buf),          char);
     dptr += sizeof(buf);
     Move(&sb->parent[0], dptr, psize,                char);
     dptr += psize;
-    Move(sb->servers[0], dptr, ssize,                char);
-    dptr += ssize;
+    for (i = 0; i < image->server_limit; i++) {
+        Move(sb->servers[i], dptr, msize, char);
+        dptr += msize;
+    }
     Move(&sb->global,    dptr, sizeof(global_score), char);
-
-    /* an equivalent C function can return 'data', in case of XS it'll
-     * try to convert char *data to PV, using strlen(), which will
-     * lose data, since it won't continue past the first \0
-     * char. Therefore in this case we explicitly return SV* and using
-     * newSVpvn(data, tsize) to tell the exact size */
-    RETVAL = newSVpvn(data, tsize);
 
     OUTPUT:
     RETVAL
