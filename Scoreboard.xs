@@ -603,7 +603,7 @@ worker_score_status(self)
     CODE:
     RETVAL = newSV(0);
     sv_setnv(RETVAL, (double)self->record->status);
-    sv_setpvf(RETVAL, "%c", status_flags[self->record->status]);
+    Perl_sv_setpvf(aTHX_ RETVAL, "%c", status_flags[self->record->status]);
     SvNOK_on(RETVAL); /* dual-var */ 
 
     OUTPUT:
