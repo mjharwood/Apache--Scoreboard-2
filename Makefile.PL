@@ -3,8 +3,7 @@ use strict;
 use warnings FATAL => 'all';
 #no warnings 'redefine';
 
-use Apache2;
-use mod_perl 1.99;
+use mod_perl2;
 
 # XXX: need to check that the same perl is used as the one mod_perl
 # was built with, otherwise unresolved symbols problems occur:
@@ -22,7 +21,7 @@ use Apache::TestMM qw(test clean);
 # prerequisites
 my %require = (
     "Apache::Test" => "1.10", # ipv6 fixes
-    "mod_perl"     => "1.9917",
+    "mod_perl"     => "2.00",
 );
 
 my @scripts = qw(t/TEST);

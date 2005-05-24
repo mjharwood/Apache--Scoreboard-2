@@ -1,12 +1,10 @@
-use Apache2;
-
 use ModPerl::Util (); #for CORE::GLOBAL::exit
 
-use Apache::RequestRec ();
-use Apache::RequestIO ();
-use Apache::RequestUtil ();
+use Apache2::RequestRec ();
+use Apache2::RequestIO ();
+use Apache2::RequestUtil ();
 
-use Apache::Const -compile => ':common';
+use Apache2::Const -compile => ':common';
 use APR::Const -compile => ':common';
 
 unless ($ENV{MOD_PERL}) {

@@ -210,7 +210,7 @@ BOOT:
 
 int
 scoreboard_send(r)
-    Apache::RequestRec r
+    Apache2::RequestRec r
 
 
 SV *

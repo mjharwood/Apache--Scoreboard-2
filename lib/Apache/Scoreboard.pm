@@ -8,7 +8,7 @@ use warnings FATAL => 'all';
 use Carp;
 
 BEGIN {
-    require mod_perl;
+    require mod_perl2;
     die "This module was built against mod_perl 2.0 ",
         "and can't be used with $mod_perl::VERSION, "
             unless $mod_perl::VERSION > 1.98;

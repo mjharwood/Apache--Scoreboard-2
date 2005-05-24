@@ -5,13 +5,13 @@ use warnings FATAL => 'all';
 
 use Apache::Test;
 
-use Apache::Response ();
-use Apache::RequestRec ();
+use Apache2::Response ();
+use Apache2::RequestRec ();
 
 use Apache::Scoreboard ();
 use MyTest::Common ();
 
-use Apache::Const -compile => 'OK';
+use Apache2::Const -compile => 'OK';
 
 sub handler {
     my $r = shift;
@@ -26,7 +26,7 @@ sub handler {
     my $image = Apache::Scoreboard->image($r->pool);
     MyTest::Common::test2($image);
 
-    Apache::OK;
+    Apache2::Const::OK;
 }
 
 1;
