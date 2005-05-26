@@ -28,10 +28,10 @@ PerlModule Apache::Scoreboard
 #</Location>
 
 ##### DEVMODE: Remove in production ###
-PerlModule Apache::Reload
-PerlInitHandler Apache::Reload
+PerlModule Apache2::Reload
+PerlInitHandler Apache2::Reload
 PerlSetVar ReloadAll Off
-PerlSetVar ReloadModules "Apache::VMonitor"
+PerlSetVar ReloadModules "Apache::Scoreboard"
 PerlSetVar ReloadDebug On
 
 #PerlModule Apache::Response
