@@ -1,5 +1,9 @@
 2.07 - dev
 
+Apache::Scoreboard::image() now does magic so that image(new APR::Pool) doesn't segfault    - Stas
+
+ported to modperl 2.0 API changes   - MJH
+
 2.06 - Fri Mar 18 13:50:49 EST 2005
 
 fix the buggy reconstruction of the fetched binary image in thaw()

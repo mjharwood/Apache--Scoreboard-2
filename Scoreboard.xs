@@ -2,6 +2,7 @@
 #include "mod_perl.h"
 #include "modperl_xs_sv_convert.h"
 #include "modperl_xs_typedefs.h"
+#include "modperl_xs_util.h"
 
 #include "scoreboard.h"
 
@@ -323,26 +324,33 @@ thaw(CLASS, pool, packet)
     OUTPUT:
     RETVAL
 
-Apache::Scoreboard
-image(CLASS, pool)
+
+SV *
+image(CLASS, pool_sv)
     SV *CLASS
-    APR::Pool pool
+    SV *pool_sv
     
-    
+    INIT:
+    modperl_scoreboard_t *image;
+    apr_pool_t *pool = mp_xs_sv2_APR__Pool(pool_sv);
+
     CODE:
     image_sanity_check(aTHX);
 
-    RETVAL = (modperl_scoreboard_t *)apr_palloc(pool, sizeof(*RETVAL));
-    
+    image = (modperl_scoreboard_t *)apr_palloc(pool, sizeof(*image));
+
     if (ap_exists_scoreboard_image()) {
-        RETVAL->sb   = ap_scoreboard_image;
-        RETVAL->pool = pool;
-        ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &(RETVAL->server_limit));
-        ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &(RETVAL->thread_limit));
+        image->sb   = ap_scoreboard_image;
+        image->pool = pool;
+        ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &(image->server_limit));
+        ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &(image->thread_limit));
     }
     else {
         Perl_croak(aTHX_ "ap_scoreboard_image doesn't exist");
     }
+    RETVAL = sv_setref_pv(NEWSV(0, 0), "Apache::Scoreboard", (void*)image);
+    /* make sure the pool sticks around as long as this object is alive */
+    mpxs_add_pool_magic(RETVAL, pool_sv);
 
     CLASS = CLASS; /* avoid warnings */
 
