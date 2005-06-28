@@ -1,6 +1,6 @@
 package Apache::Scoreboard;
 
-$Apache::Scoreboard::VERSION = '2.07';
+$Apache::Scoreboard::VERSION = '2.08';
 
 use strict;
 use warnings FATAL => 'all';
@@ -11,7 +11,7 @@ BEGIN {
     require mod_perl2;
     die "This module was built against mod_perl 2.0 ",
         "and can't be used with $mod_perl::VERSION, "
-            unless $mod_perl::VERSION > 1.98;
+            unless $mod_perl::VERSION > 2.00;
 }
 
 # so that it can be loaded w/o mod_perl (.e.g MakeMaker requires this
@@ -95,6 +95,11 @@ Apache::Scoreboard - Perl interface to the Apache scoreboard structure
 
 =head1 SYNOPSIS
 
+ # Configuration in httpd.conf:
+ # mod_status should be compiled in (it is by default)
+ ExtendedStatus On
+
+ # in your perl code:
   use Apache::Scoreboard ();
 
   #inside httpd
@@ -655,3 +660,4 @@ Doug MacEachern
 
 Stas Bekman
 
+Malcolm J Harwood
