@@ -11,7 +11,7 @@ BEGIN {
     require mod_perl2;
     die "This module was built against mod_perl 2.0 ",
         "and can't be used with $mod_perl::VERSION, "
-            unless $mod_perl::VERSION > 2.00;
+            unless $mod_perl::VERSION > 1.99;
 }
 
 # so that it can be loaded w/o mod_perl (.e.g MakeMaker requires this
