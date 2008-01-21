@@ -18,7 +18,10 @@ sub genxs {
 
 genxs();
 
+my $extra_inc = '-I/usr/include/apr-1';
 ModPerl::MM::WriteMakefile(
     NAME	 => 'Apache::DummyScoreboard',
     VERSION_FROM => 'DummyScoreboard.pm',
+    INC => join " ", $extra_inc, ModPerl::MM::get_def_opt('INC'),
+
 );

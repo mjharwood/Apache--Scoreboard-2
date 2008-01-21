@@ -30,13 +30,15 @@ my @scripts = qw(t/TEST);
 Apache::TestMM::filter_args();
 Apache::TestMM::generate_script('t/TEST');
 
+my $extra_inc = '-I/usr/include/apr-1';
 ModPerl::MM::WriteMakefile(
     NAME         => 'Apache::Scoreboard',
     VERSION_FROM => 'lib/Apache/Scoreboard.pm',
     PREREQ_PM    => \%require,
     clean        => {
         FILES => "@{ clean_files() }",
-    }
+    },
+    INC => join " ", $extra_inc, ModPerl::MM::get_def_opt('INC'),
 );
 
 sub clean_files {
