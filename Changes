@@ -1,3 +1,10 @@
+2.09 - Tues Mar 4 15:58:00 EST 2008
+
+Only process request if we're enabled for this uri (Patch from Gozer)
+
+Improve apr header detection for build. (Some distributions install in ../include/apr, some in ../include/apr-1)
+
+
 2.07 - dev
 
 Apache::Scoreboard::image() now does magic so that image(new APR::Pool) doesn't segfault    - Stas
