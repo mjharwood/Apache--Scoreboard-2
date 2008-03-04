@@ -1,4 +1,5 @@
 #define REMOTE_SCOREBOARD_TYPE "application/x-httpd-scoreboard"
+#define HANDLER_NAME "scoreboard-send-handler"
 
 #ifndef Move
 #define Move(s,d,n,t) (void)memmove((char*)(d),(char*)(s), (n) * sizeof(t)) 
@@ -35,6 +36,14 @@ static int scoreboard_send(request_rec *r)
     char buf[SIZE16*4];
     char *ptr = buf;
     int server_limit, thread_limit;
+
+    /* In httpd-2.x, each content handler is invoked, and is responsible for
+       checking wether it's enabled or not for a given url. That's different
+       from how 1.3 used to do it.
+    */
+    if (strcmp(r->handler, HANDLER_NAME)) {
+        return DECLINED;
+    }
 
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
